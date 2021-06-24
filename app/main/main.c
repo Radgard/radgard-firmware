@@ -1,10 +1,11 @@
 /*
-    Radgard
+    Radgard Main
 */
 
 #include <stdio.h>
-#include "logger/logger.h"
+
+#include "server.h"
 
 void app_main(void) {
-    info_log("Test.");
+    server_start();
 }

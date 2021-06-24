@@ -603,3 +603,10 @@
 /Users/shawnpatel/Documents/Radgard/Animal-Farm-Firmware/app/build/esp-idf/main/CMakeFiles/install/strip.dir
 /Users/shawnpatel/Documents/Radgard/Animal-Farm-Firmware/app/build/esp-idf/main/CMakeFiles/install.dir
 /Users/shawnpatel/Documents/Radgard/Animal-Farm-Firmware/app/build/esp-idf/main/CMakeFiles/list_install_components.dir
+/Users/shawnpatel/Documents/Radgard/Animal-Farm-Firmware/app/build/esp-idf/server/CMakeFiles/install/local.dir
+/Users/shawnpatel/Documents/Radgard/Animal-Farm-Firmware/app/build/esp-idf/server/CMakeFiles/install/strip.dir
+/Users/shawnpatel/Documents/Radgard/Animal-Farm-Firmware/app/build/esp-idf/server/CMakeFiles/install.dir
+/Users/shawnpatel/Documents/Radgard/Animal-Farm-Firmware/app/build/esp-idf/server/CMakeFiles/list_install_components.dir
+/Users/shawnpatel/Documents/Radgard/Animal-Farm-Firmware/app/build/esp-idf/server/CMakeFiles/rebuild_cache.dir
+/Users/shawnpatel/Documents/Radgard/Animal-Farm-Firmware/app/build/esp-idf/server/CMakeFiles/edit_cache.dir
+/Users/shawnpatel/Documents/Radgard/Animal-Farm-Firmware/app/build/esp-idf/server/CMakeFiles/__idf_server.dir
