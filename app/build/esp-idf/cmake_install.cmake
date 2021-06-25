@@ -113,6 +113,7 @@ if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   include("/Users/shawnpatel/Documents/Radgard/Animal-Farm-Firmware/app/build/esp-idf/unity/cmake_install.cmake")
   include("/Users/shawnpatel/Documents/Radgard/Animal-Farm-Firmware/app/build/esp-idf/wifi_provisioning/cmake_install.cmake")
   include("/Users/shawnpatel/Documents/Radgard/Animal-Farm-Firmware/app/build/esp-idf/main/cmake_install.cmake")
+  include("/Users/shawnpatel/Documents/Radgard/Animal-Farm-Firmware/app/build/esp-idf/storage/cmake_install.cmake")
   include("/Users/shawnpatel/Documents/Radgard/Animal-Farm-Firmware/app/build/esp-idf/server/cmake_install.cmake")
 
 endif()

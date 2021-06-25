@@ -15,11 +15,13 @@
 #include <wifi_provisioning/scheme_softap.h>
 
 #include "server.h"
+#include "storage.h"
+
+static const char *TAG = "server";
 
 static const char *SSID = "Radgard";
 static const char *PASSWORD = "plantsaregreat";
-
-static const char *TAG = "app";
+static const char *ENDPOINT = "user-id";
 
 /* Signal Wi-Fi events on this event-group */
 const int WIFI_CONNECTED_EVENT = BIT0;
@@ -81,33 +83,23 @@ static void wifi_init_sta(void) {
  * The data format can be chosen by applications. Here, we are using plain ascii text.
  * Applications can choose to use other formats like protobuf, JSON, XML, etc.
  */
-esp_err_t custom_prov_data_handler(uint32_t session_id, const uint8_t *inbuf, ssize_t inlen,
+esp_err_t user_id_handler(uint32_t session_id, const uint8_t *inbuf, ssize_t inlen,
                                    uint8_t **outbuf, ssize_t *outlen, void *priv_data) {
     if (inbuf) {
-        ESP_LOGI(TAG, "Received data: %.*s", inlen, (char *)inbuf);
-    }
-    char response[] = "SUCCESS";
-    *outbuf = (uint8_t *)strdup(response);
-    if (*outbuf == NULL) {
-        ESP_LOGE(TAG, "System out of memory");
-        return ESP_ERR_NO_MEM;
-    }
-    *outlen = strlen(response) + 1; /* +1 for NULL terminating byte */
+        char *user_id = (char *) inbuf;
+        ESP_LOGI(TAG, "Received /user-id data: %.*s", inlen, user_id);
 
-    return ESP_OK;
+        storage_init_nvs();
+
+        return ESP_OK;
+    }
+
+    return ESP_FAIL;
 }
 
-void server_start() {
+void server_start_provisioning_or_connect_wifi() {
     /* Initialize NVS partition */
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        /* NVS partition was truncated
-         * and needs to be erased */
-        ESP_ERROR_CHECK(nvs_flash_erase());
-
-        /* Retry nvs_flash_init */
-        ESP_ERROR_CHECK(nvs_flash_init());
-    }
+    storage_init_nvs();
 
     /* Initialize TCP/IP */
     ESP_ERROR_CHECK(esp_netif_init());
@@ -165,7 +157,7 @@ void server_start() {
          *      - this should be a string with length > 0
          *      - NULL if not used
          */
-        const char pop = NULL;
+        const char *pop = NULL;
 
         /* What is the service key (could be NULL)
          * This translates to :
@@ -179,7 +171,7 @@ void server_start() {
          * The endpoint name can be anything of your choice.
          * This call must be made before starting the provisioning.
          */
-        wifi_prov_mgr_endpoint_create("user-id");
+        wifi_prov_mgr_endpoint_create(ENDPOINT);
         /* Start provisioning service */
         ESP_ERROR_CHECK(wifi_prov_mgr_start_provisioning(security, pop, service_name, service_key));
 
@@ -187,7 +179,7 @@ void server_start() {
          * This call must be made after starting the provisioning, and only if the endpoint
          * has already been created above.
          */
-        wifi_prov_mgr_endpoint_register("user-id", custom_prov_data_handler, NULL);
+        wifi_prov_mgr_endpoint_register(ENDPOINT, user_id_handler, NULL);
 
         /* Uncomment the following to wait for the provisioning to finish and then release
          * the resources of the manager. Since in this case de-initialization is triggered

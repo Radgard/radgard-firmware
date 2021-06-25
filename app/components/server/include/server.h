@@ -1,2 +1,2 @@
 
-void server_start();
+void server_start_provisioning_or_connect_wifi();

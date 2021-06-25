@@ -7,5 +7,5 @@
 #include "server.h"
 
 void app_main(void) {
-    server_start();
+    server_start_provisioning_or_connect_wifi();
 }
