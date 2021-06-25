@@ -86,24 +86,18 @@ static void wifi_init_sta(void) {
 esp_err_t user_id_handler(uint32_t session_id, const uint8_t *inbuf, ssize_t inlen,
                                    uint8_t **outbuf, ssize_t *outlen, void *priv_data) {
     if (inbuf) {
-        char *user_id = (char *) inbuf;
-        ESP_LOGI(TAG, "Received /user-id data: %.*s", inlen, user_id);
+        // Get first `inlen` characters of inbuf as `user_id`
+        char *user_id = malloc(inlen + 1);
+        strncpy(user_id, (char *) inbuf, inlen);
+        user_id[inlen] = '\0';
+        ESP_LOGI(TAG, "Received /user-id data: %s", user_id);
 
+        // Store `user_id` in NVS
         storage_init_nvs();
         esp_err_t set_err = storage_set("user_id", user_id);
         if (set_err != ESP_OK) {
             ESP_LOGW(TAG, "Error saving user-id to storage: %s", esp_err_to_name(set_err));
         }
-
-        size_t size;
-        storage_size("user_id", &size);
-        char *fetched_user_id = malloc(size);
-        esp_err_t get_err = storage_get("user_id", fetched_user_id, &size);
-        if (get_err != ESP_OK) {
-            ESP_LOGW(TAG, "Error fetching user-id from storage: %s", esp_err_to_name(get_err));
-        }
-
-        ESP_LOGI(TAG, "GOT USER-ID: %s", fetched_user_id);
 
         return ESP_OK;
     }
