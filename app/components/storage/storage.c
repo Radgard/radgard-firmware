@@ -13,7 +13,7 @@
 
 static const char *TAG = "storage";
 
-static const char *HANDLE_ID = "storage";
+static const char *HANDLE_NAME = "storage";
 
 void storage_init_nvs() {
     /* Initialize NVS partition */
@@ -30,10 +30,10 @@ void storage_init_nvs() {
 
 esp_err_t storage_set(char *key, char *value) {
     nvs_handle handle;
-    esp_err_t open_err = nvs_open(HANDLE_ID, NVS_READWRITE, &handle);
+    esp_err_t open_err = nvs_open(HANDLE_NAME, NVS_READWRITE, &handle);
 
     if (open_err != ESP_OK) {
-        ESP_LOGE(TAG, "Could not open NVS handle %s; Error: %s", HANDLE_ID, esp_err_to_name(open_err));
+        ESP_LOGE(TAG, "Could not open NVS handle %s; Error: %s", HANDLE_NAME, esp_err_to_name(open_err));
 
         return open_err;
     }
@@ -47,10 +47,10 @@ esp_err_t storage_set(char *key, char *value) {
 
 esp_err_t storage_get(char *key, char *value, size_t *size) {
     nvs_handle handle;
-    esp_err_t open_err = nvs_open(HANDLE_ID, NVS_READONLY, &handle);
+    esp_err_t open_err = nvs_open(HANDLE_NAME, NVS_READONLY, &handle);
 
     if (open_err != ESP_OK) {
-        ESP_LOGE(TAG, "Could not open NVS handle %s; Error: %s", HANDLE_ID, esp_err_to_name(open_err));
+        ESP_LOGE(TAG, "Could not open NVS handle %s; Error: %s", HANDLE_NAME, esp_err_to_name(open_err));
 
         return open_err;
     }
@@ -60,4 +60,8 @@ esp_err_t storage_get(char *key, char *value, size_t *size) {
     nvs_close(handle);
 
     return get_err;
+}
+
+esp_err_t storage_size(char *key, size_t *size) {
+    return storage_get(key, NULL, size);
 }

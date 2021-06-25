@@ -90,6 +90,20 @@ esp_err_t user_id_handler(uint32_t session_id, const uint8_t *inbuf, ssize_t inl
         ESP_LOGI(TAG, "Received /user-id data: %.*s", inlen, user_id);
 
         storage_init_nvs();
+        esp_err_t set_err = storage_set("user_id", user_id);
+        if (set_err != ESP_OK) {
+            ESP_LOGW(TAG, "Error saving user-id to storage: %s", esp_err_to_name(set_err));
+        }
+
+        size_t size;
+        storage_size("user_id", &size);
+        char *fetched_user_id = malloc(size);
+        esp_err_t get_err = storage_get("user_id", fetched_user_id, &size);
+        if (get_err != ESP_OK) {
+            ESP_LOGW(TAG, "Error fetching user-id from storage: %s", esp_err_to_name(get_err));
+        }
+
+        ESP_LOGI(TAG, "GOT USER-ID: %s", fetched_user_id);
 
         return ESP_OK;
     }
@@ -151,7 +165,7 @@ void server_start_provisioning_or_connect_wifi() {
          *          using X25519 key exchange and proof of possession (pop) and AES-CTR
          *          for encryption/decryption of messages.
          */
-        wifi_prov_security_t security = WIFI_PROV_SECURITY_1;
+        wifi_prov_security_t security = WIFI_PROV_SECURITY_0;
 
         /* Do we want a proof-of-possession (ignored if Security 0 is selected):
          *      - this should be a string with length > 0
