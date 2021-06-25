@@ -159,7 +159,7 @@ void server_start_provisioning_or_connect_wifi() {
          *          using X25519 key exchange and proof of possession (pop) and AES-CTR
          *          for encryption/decryption of messages.
          */
-        wifi_prov_security_t security = WIFI_PROV_SECURITY_0;
+        wifi_prov_security_t security = WIFI_PROV_SECURITY_1;
 
         /* Do we want a proof-of-possession (ignored if Security 0 is selected):
          *      - this should be a string with length > 0
