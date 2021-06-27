@@ -15,6 +15,8 @@ static const char *TAG = "storage";
 
 static const char *HANDLE_NAME = "storage";
 
+const char *STORAGE_USER_ID = "user_id";
+
 void storage_init_nvs() {
     /* Initialize NVS partition */
     esp_err_t err = nvs_flash_init();
@@ -28,7 +30,7 @@ void storage_init_nvs() {
     }
 }
 
-esp_err_t storage_set(char *key, char *value) {
+esp_err_t storage_set(const char *key, const char *value) {
     nvs_handle handle;
     esp_err_t open_err = nvs_open(HANDLE_NAME, NVS_READWRITE, &handle);
 
@@ -45,7 +47,7 @@ esp_err_t storage_set(char *key, char *value) {
     return set_err;
 }
 
-esp_err_t storage_get(char *key, char *value, size_t *size) {
+esp_err_t storage_get(const char *key, char *value, size_t *size) {
     nvs_handle handle;
     esp_err_t open_err = nvs_open(HANDLE_NAME, NVS_READONLY, &handle);
 
@@ -62,6 +64,6 @@ esp_err_t storage_get(char *key, char *value, size_t *size) {
     return get_err;
 }
 
-esp_err_t storage_size(char *key, size_t *size) {
+esp_err_t storage_size(const char *key, size_t *size) {
     return storage_get(key, NULL, size);
 }

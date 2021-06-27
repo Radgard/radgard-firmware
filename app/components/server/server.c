@@ -94,9 +94,9 @@ esp_err_t user_id_handler(uint32_t session_id, const uint8_t *inbuf, ssize_t inl
 
         // Store `user_id` in NVS
         storage_init_nvs();
-        esp_err_t set_err = storage_set("user_id", user_id);
+        esp_err_t set_err = storage_set(STORAGE_USER_ID, user_id);
         if (set_err != ESP_OK) {
-            ESP_LOGW(TAG, "Error saving user-id to storage: %s", esp_err_to_name(set_err));
+            ESP_LOGE(TAG, "Error saving user-id to storage: %s", esp_err_to_name(set_err));
         }
 
         return ESP_OK;
@@ -159,7 +159,7 @@ void server_start_provisioning_or_connect_wifi() {
          *          using X25519 key exchange and proof of possession (pop) and AES-CTR
          *          for encryption/decryption of messages.
          */
-        wifi_prov_security_t security = WIFI_PROV_SECURITY_1;
+        wifi_prov_security_t security = WIFI_PROV_SECURITY_0;
 
         /* Do we want a proof-of-possession (ignored if Security 0 is selected):
          *      - this should be a string with length > 0
