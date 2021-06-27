@@ -7,7 +7,11 @@
     "scheme_softap.h": "c",
     "stdio.h": "c",
     "esp_http_server.h": "c",
-    "esp_tls.h": "c"
+    "esp_tls.h": "c",
+    "array": "c",
+    "string_view": "c",
+    "initializer_list": "c",
+    "utility": "c"
   },
   "idf.port": "/dev/cu.usbserial-0001",
   "idf.flashType": "UART"

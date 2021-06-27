@@ -3,42 +3,33 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "freertos/event_groups.h"
 
-#include "esp_wifi.h"
-#include "esp_event.h"
 #include "esp_log.h"
 #include "esp_system.h"
+
+#include "esp_event.h"
 #include "esp_netif.h"
-
-#include "lwip/err.h"
-#include "lwip/sockets.h"
-#include "lwip/sys.h"
-#include "lwip/netdb.h"
-#include "lwip/dns.h"
-
-//#include "esp_tls.h"
-#include "esp_crt_bundle.h"
+#include "esp_tls.h"
 
 #include "api.h"
 #include "storage.h"
 
 static const char *TAG = "api";
 
-esp_err_t api_get_irrigation_settings() {
+static void get_irrigation_settings() {
     storage_init_nvs();
     size_t size;
     esp_err_t size_err = storage_size(STORAGE_USER_ID, &size);
     if (size_err != ESP_OK) {
         ESP_LOGE(TAG, "Error getting user-id size from storage: %s", esp_err_to_name(size_err));
-        return ESP_FAIL;
+        return;
     }
 
     char *user_id = malloc(size);
     esp_err_t get_err = storage_get(STORAGE_USER_ID, user_id, &size);
     if (get_err != ESP_OK) {
         ESP_LOGE(TAG, "Error getting user-id from storage: %s", esp_err_to_name(get_err));
-        return ESP_FAIL;
+        return;
     }
 
     ESP_LOGI(TAG, "Fetched user-id from NVS; attempting to get irrigation settings from server");
@@ -59,8 +50,12 @@ esp_err_t api_get_irrigation_settings() {
 
     char *REQUEST = malloc(strlen(request_holder) + strlen(URL) + strlen(DATA) + 1);
     sprintf(REQUEST, request_holder, URL, DATA);
+}
 
-    
+void api_get_irrigation_settings() {
+    storage_init_nvs();
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    return ESP_OK;
+    xTaskCreate(&get_irrigation_settings, "get_irrigation_settings", 8192, NULL, 5, NULL);
 }
