@@ -206,6 +206,8 @@ void network_start_provision_connect_wifi() {
 
     /* Wait for Wi-Fi connection */
     xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_EVENT, false, true, portMAX_DELAY);
+
+    ESP_ERROR_CHECK(esp_event_loop_delete_default());
 }
 
 void network_disconnect_wifi() {
