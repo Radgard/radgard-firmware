@@ -16,6 +16,7 @@ static const char *TAG = "storage";
 static const char *HANDLE_NAME = "storage";
 
 const char *STORAGE_USER_ID = "user_id";
+const char *STORAGE_ZONE_NUMBER = "zone_number";
 
 void storage_init_nvs() {
     /* Initialize NVS partition */
@@ -30,7 +31,11 @@ void storage_init_nvs() {
     }
 }
 
-esp_err_t storage_set(const char *key, const char *value) {
+void storage_deinit_nvs() {
+    ESP_ERROR_CHECK(nvs_flash_deinit());
+}
+
+static nvs_handle get_write_handle() {
     nvs_handle handle;
     esp_err_t open_err = nvs_open(HANDLE_NAME, NVS_READWRITE, &handle);
 
@@ -40,14 +45,10 @@ esp_err_t storage_set(const char *key, const char *value) {
         return open_err;
     }
 
-    esp_err_t set_err = nvs_set_str(handle, key, value);
-
-    nvs_close(handle);
-
-    return set_err;
+    return handle;
 }
 
-esp_err_t storage_get(const char *key, char *value, size_t *size) {
+static nvs_handle get_read_handle() {
     nvs_handle handle;
     esp_err_t open_err = nvs_open(HANDLE_NAME, NVS_READONLY, &handle);
 
@@ -57,6 +58,32 @@ esp_err_t storage_get(const char *key, char *value, size_t *size) {
         return open_err;
     }
 
+    return handle;
+}
+
+esp_err_t storage_set_str(const char *key, const char *value) {
+    nvs_handle handle = get_write_handle();
+
+    esp_err_t set_err = nvs_set_str(handle, key, value);
+
+    nvs_close(handle);
+
+    return set_err;
+}
+
+esp_err_t storage_set_u8(const char *key, uint8_t value) {
+    nvs_handle handle = get_write_handle();
+
+    esp_err_t set_err = nvs_set_u8(handle, key, value);
+
+    nvs_close(handle);
+
+    return set_err;
+}
+
+esp_err_t storage_get_str(const char *key, char *value, size_t *size) {
+    nvs_handle handle = get_read_handle();
+
     esp_err_t get_err = nvs_get_str(handle, key, value, size);
 
     nvs_close(handle);
@@ -64,6 +91,16 @@ esp_err_t storage_get(const char *key, char *value, size_t *size) {
     return get_err;
 }
 
-esp_err_t storage_size(const char *key, size_t *size) {
-    return storage_get(key, NULL, size);
+esp_err_t storage_get_u8(const char *key, uint8_t *value) {
+    nvs_handle handle = get_read_handle();
+
+    esp_err_t get_err = nvs_get_u8(handle, key, value);
+
+    nvs_close(handle);
+
+    return get_err;
+}
+
+esp_err_t storage_get_str_size(const char *key, size_t *size) {
+    return storage_get_str(key, NULL, size);
 }

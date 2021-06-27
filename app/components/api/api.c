@@ -89,27 +89,41 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt) {
 
 static void get_irrigation_settings() {
     storage_init_nvs();
+
     size_t size;
-    esp_err_t size_err = storage_size(STORAGE_USER_ID, &size);
+    esp_err_t size_err = storage_get_str_size(STORAGE_USER_ID, &size);
     if (size_err != ESP_OK) {
-        ESP_LOGE(TAG, "Error getting user-id size from storage: %s", esp_err_to_name(size_err));
-        return;
+        ESP_LOGE(TAG, "Error getting user_id size from storage: %s", esp_err_to_name(size_err));
+        
+        storage_deinit_nvs();
+        vTaskDelete(NULL);
     }
 
     char *user_id = malloc(size);
-    esp_err_t get_err = storage_get(STORAGE_USER_ID, user_id, &size);
+    esp_err_t get_err = storage_get_str(STORAGE_USER_ID, user_id, &size);
     if (get_err != ESP_OK) {
-        ESP_LOGE(TAG, "Error getting user-id from storage: %s", esp_err_to_name(get_err));
-        return;
+        ESP_LOGE(TAG, "Error getting user_id from storage: %s", esp_err_to_name(get_err));
+        
+        storage_deinit_nvs();
+        vTaskDelete(NULL);
     }
 
-    ESP_LOGI(TAG, "Fetched user-id from NVS; attempting to get irrigation settings from server");
+    uint8_t *zone_number;
+    get_err = storage_get_u8(STORAGE_ZONE_NUMBER, zone_number);
+    if (get_err != ESP_OK) {
+        ESP_LOGE(TAG, "Error getting user_id from storage: %s", esp_err_to_name(get_err));
+
+        storage_deinit_nvs();
+        vTaskDelete(NULL);
+    }
+
+    ESP_LOGI(TAG, "Fetched user_id and zone_number from NVS; attempting to get irrigation settings from server");
 
     const char *URL = "https://us-central1-animal-farm-e321d.cloudfunctions.net/getIrrigationSettings";
-    const char *data_holder = "{\"userID\":\"%s\"}";
+    const char *data_holder = "{\"userId\":\"%s\",\"zoneNumber\":%d}";
 
     char *DATA = malloc(strlen(data_holder) + strlen(user_id) + 1);
-    sprintf(DATA, data_holder, user_id);
+    sprintf(DATA, data_holder, user_id, *zone_number);
 
     char irrigation_settings[MAX_HTTP_OUTPUT_BUFFER] = {0};
 
@@ -138,12 +152,12 @@ static void get_irrigation_settings() {
         ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(http_err));
     }
 
+    storage_deinit_nvs();
     esp_http_client_cleanup(client);
     vTaskDelete(NULL);
 }
 
 void api_get_irrigation_settings() {
-    storage_init_nvs();
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 

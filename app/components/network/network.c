@@ -13,6 +13,8 @@
 
 #include <wifi_provisioning/scheme_softap.h>
 
+#include <cJSON.h>
+
 #include "network.h"
 #include "storage.h"
 
@@ -20,7 +22,7 @@ static const char *TAG = "network";
 
 static const char *SSID = "Radgard";
 static const char *PASSWORD = "plantsaregreat";
-static const char *ENDPOINT = "user-id";
+static const char *ENDPOINT = "setup";
 
 /* Signal Wi-Fi events on this event-group */
 const int WIFI_CONNECTED_EVENT = BIT0;
@@ -82,21 +84,36 @@ static void wifi_init_sta(void) {
  * The data format can be chosen by applications. Here, we are using plain ascii text.
  * Applications can choose to use other formats like protobuf, JSON, XML, etc.
  */
-esp_err_t user_id_handler(uint32_t session_id, const uint8_t *inbuf, ssize_t inlen,
+esp_err_t setup_handler(uint32_t session_id, const uint8_t *inbuf, ssize_t inlen,
                                    uint8_t **outbuf, ssize_t *outlen, void *priv_data) {
     if (inbuf) {
-        // Get first `inlen` characters of inbuf as `user_id`
-        char *user_id = malloc(inlen + 1);
-        strncpy(user_id, (char *) inbuf, inlen);
-        user_id[inlen] = '\0';
-        ESP_LOGI(TAG, "Received /user-id data: %s", user_id);
+        // Get first `inlen` characters of inbuf as `setup`
+        char *setup = malloc(inlen + 1);
+        strncpy(setup, (char *) inbuf, inlen);
+        setup[inlen] = '\0';
+        ESP_LOGI(TAG, "Received /setup data: %s", setup);
+
+        // Parse JSON
+        cJSON *json = cJSON_Parse(setup);
+        cJSON *user_id_json = cJSON_GetObjectItem(json, "userId");
+        cJSON *zone_number_json = cJSON_GetObjectItem(json, "zoneNumber");
+
+        char *user_id = user_id_json->valuestring;
+        uint8_t zone_number = (uint8_t) zone_number_json->valuedouble;
 
         // Store `user_id` in NVS
-        storage_init_nvs();
-        esp_err_t set_err = storage_set(STORAGE_USER_ID, user_id);
+        esp_err_t set_err = storage_set_str(STORAGE_USER_ID, user_id);
         if (set_err != ESP_OK) {
-            ESP_LOGE(TAG, "Error saving user-id to storage: %s", esp_err_to_name(set_err));
+            ESP_LOGE(TAG, "Error saving user_id to storage: %s", esp_err_to_name(set_err));
         }
+
+        // Store `zone_number` in NVS
+        set_err = storage_set_u8(STORAGE_ZONE_NUMBER, zone_number);
+        if (set_err != ESP_OK) {
+            ESP_LOGE(TAG, "Error saving zone_number to storage: %s", esp_err_to_name(set_err));
+        }
+
+        ESP_LOGI(TAG, "Stored /setup data in NVS");
 
         return ESP_OK;
     }
@@ -186,7 +203,7 @@ void network_start_provision_connect_wifi() {
          * This call must be made after starting the provisioning, and only if the endpoint
          * has already been created above.
          */
-        wifi_prov_mgr_endpoint_register(ENDPOINT, user_id_handler, NULL);
+        wifi_prov_mgr_endpoint_register(ENDPOINT, setup_handler, NULL);
 
         /* Uncomment the following to wait for the provisioning to finish and then release
          * the resources of the manager. Since in this case de-initialization is triggered
@@ -207,6 +224,7 @@ void network_start_provision_connect_wifi() {
     /* Wait for Wi-Fi connection */
     xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_EVENT, false, true, portMAX_DELAY);
 
+    storage_deinit_nvs();
     ESP_ERROR_CHECK(esp_event_loop_delete_default());
 }
 
