@@ -60,7 +60,7 @@ esp_err_t api_get_irrigation_settings() {
     char *REQUEST = malloc(strlen(request_holder) + strlen(URL) + strlen(DATA) + 1);
     sprintf(REQUEST, request_holder, URL, DATA);
 
-    ESP_LOGI(TAG, "REQUEST DATA: %s", REQUEST);
+    
 
     return ESP_OK;
 }

@@ -14,10 +14,10 @@
 
 #include <wifi_provisioning/scheme_softap.h>
 
-#include "server.h"
+#include "network.h"
 #include "storage.h"
 
-static const char *TAG = "server";
+static const char *TAG = "network";
 
 static const char *SSID = "Radgard";
 static const char *PASSWORD = "plantsaregreat";
@@ -105,7 +105,7 @@ esp_err_t user_id_handler(uint32_t session_id, const uint8_t *inbuf, ssize_t inl
     return ESP_FAIL;
 }
 
-void server_start_provisioning_or_connect_wifi() {
+void network_start_provision_connect_wifi() {
     /* Initialize NVS partition */
     storage_init_nvs();
 
@@ -207,4 +207,8 @@ void server_start_provisioning_or_connect_wifi() {
 
     /* Wait for Wi-Fi connection */
     xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_EVENT, false, true, portMAX_DELAY);
+}
+
+void network_disconnect_wifi() {
+    ESP_ERROR_CHECK(esp_wifi_stop());
 }
