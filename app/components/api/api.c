@@ -15,7 +15,7 @@
 #include "api.h"
 #include "storage.h"
 
-#define MAX_HTTP_OUTPUT_BUFFER 5096
+#define MAX_HTTP_OUTPUT_BUFFER 2048
 static const char *TAG = "api";
 
 esp_err_t _http_event_handler(esp_http_client_event_t *evt) {
@@ -111,7 +111,7 @@ static void get_irrigation_settings() {
     char *DATA = malloc(strlen(data_holder) + strlen(user_id) + 1);
     sprintf(DATA, data_holder, user_id);
 
-    char local_response_buffer[MAX_HTTP_OUTPUT_BUFFER] = {0};
+    char irrigation_settings[MAX_HTTP_OUTPUT_BUFFER] = {0};
 
     esp_http_client_config_t config = {
         .url = URL,
@@ -119,7 +119,7 @@ static void get_irrigation_settings() {
         .query  = "esp",
         .transport_type = HTTP_TRANSPORT_OVER_TCP,
         .event_handler = _http_event_handler,
-        .user_data = local_response_buffer,
+        .user_data = irrigation_settings,
         .timeout_ms = 20000
     };
 
@@ -133,7 +133,7 @@ static void get_irrigation_settings() {
         ESP_LOGI(TAG, "HTTP POST Status = %d, content_length = %d",
                 esp_http_client_get_status_code(client),
                 esp_http_client_get_content_length(client));
-        //ESP_LOGI(TAG, "HTTP DATA = %s", local_response_buffer);
+        ESP_LOGI(TAG, "HTTP DATA = %s", irrigation_settings);
     } else {
         ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(http_err));
     }
