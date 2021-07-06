@@ -108,8 +108,8 @@ static void get_irrigation_settings() {
         vTaskDelete(NULL);
     }
 
-    uint8_t *zone_number;
-    get_err = storage_get_u8(STORAGE_ZONE_NUMBER, zone_number);
+    uint8_t zone_number;
+    get_err = storage_get_u8(STORAGE_ZONE_NUMBER, &zone_number);
     if (get_err != ESP_OK) {
         ESP_LOGE(TAG, "Error getting user_id from storage: %s", esp_err_to_name(get_err));
 
@@ -123,7 +123,7 @@ static void get_irrigation_settings() {
     const char *data_holder = "{\"userId\":\"%s\",\"zoneNumber\":%d}";
 
     char *DATA = malloc(strlen(data_holder) + strlen(user_id) + 1);
-    sprintf(DATA, data_holder, user_id, *zone_number);
+    sprintf(DATA, data_holder, user_id, zone_number);
 
     char irrigation_settings[MAX_HTTP_OUTPUT_BUFFER] = {0};
 

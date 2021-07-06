@@ -68,6 +68,8 @@ esp_err_t storage_set_str(const char *key, const char *value) {
 
     nvs_close(handle);
 
+    ESP_LOGI(TAG, "Attempted to set value (%s) to key (%s)", value, key);
+
     return set_err;
 }
 
@@ -77,6 +79,8 @@ esp_err_t storage_set_u8(const char *key, uint8_t value) {
     esp_err_t set_err = nvs_set_u8(handle, key, value);
 
     nvs_close(handle);
+
+    ESP_LOGI(TAG, "Attempted to set value (%d) to key (%s)", value, key);
 
     return set_err;
 }
@@ -88,6 +92,10 @@ esp_err_t storage_get_str(const char *key, char *value, size_t *size) {
 
     nvs_close(handle);
 
+    if (value != NULL) {
+        ESP_LOGI(TAG, "Attempted to get value (%s) from key (%s)", value, key);
+    }
+
     return get_err;
 }
 
@@ -97,6 +105,8 @@ esp_err_t storage_get_u8(const char *key, uint8_t *value) {
     esp_err_t get_err = nvs_get_u8(handle, key, value);
 
     nvs_close(handle);
+
+    ESP_LOGI(TAG, "Attempted to get value (%d) from key (%s)", *value, key);
 
     return get_err;
 }
