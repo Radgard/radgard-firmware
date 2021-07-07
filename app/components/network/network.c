@@ -227,6 +227,10 @@ void network_start_provision_connect_wifi() {
 
     storage_deinit_nvs();
     ESP_ERROR_CHECK(esp_event_loop_delete_default());
+
+    ESP_LOGI(TAG, "Just connected to WIFI - starting sleep to allow proper configuration");
+    vTaskDelay(1000 / portTICK_RATE_MS);
+    ESP_LOGI(TAG, "Just connected to WIFI - ending sleep to use for API calls");
 }
 
 void network_disconnect_wifi() {
