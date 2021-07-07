@@ -100,6 +100,7 @@ esp_err_t setup_handler(uint32_t session_id, const uint8_t *inbuf, ssize_t inlen
 
         char *user_id = user_id_json->valuestring;
         uint8_t zone_number = (uint8_t) zone_number_json->valuedouble;
+        free(setup);
 
         // Store `user_id` in NVS
         esp_err_t set_err = storage_set_str(STORAGE_USER_ID, user_id);

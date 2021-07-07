@@ -17,6 +17,8 @@ static const char *HANDLE_NAME = "storage";
 
 const char *STORAGE_USER_ID = "user_id";
 const char *STORAGE_ZONE_NUMBER = "zone_number";
+const char *STORAGE_TIMES_LENGTH = "times_length";
+const char *STORAGE_TIMES_BASE = "time_%d";
 
 void storage_init_nvs() {
     /* Initialize NVS partition */
@@ -85,6 +87,18 @@ esp_err_t storage_set_u8(const char *key, uint8_t value) {
     return set_err;
 }
 
+esp_err_t storage_set_u32(const char *key, uint32_t value) {
+    nvs_handle handle = get_write_handle();
+
+    esp_err_t set_err = nvs_set_u32(handle, key, value);
+
+    nvs_close(handle);
+
+    ESP_LOGI(TAG, "Attempted to set value (%d) to key (%s)", value, key);
+
+    return set_err;
+}
+
 esp_err_t storage_get_str(const char *key, char *value, size_t *size) {
     nvs_handle handle = get_read_handle();
 
@@ -103,6 +117,18 @@ esp_err_t storage_get_u8(const char *key, uint8_t *value) {
     nvs_handle handle = get_read_handle();
 
     esp_err_t get_err = nvs_get_u8(handle, key, value);
+
+    nvs_close(handle);
+
+    ESP_LOGI(TAG, "Attempted to get value (%d) from key (%s)", *value, key);
+
+    return get_err;
+}
+
+esp_err_t storage_get_u32(const char *key, uint32_t *value) {
+    nvs_handle handle = get_read_handle();
+
+    esp_err_t get_err = nvs_get_u32(handle, key, value);
 
     nvs_close(handle);
 

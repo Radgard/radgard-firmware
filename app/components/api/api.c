@@ -12,6 +12,8 @@
 #include "esp_tls.h"
 #include "esp_http_client.h"
 
+#include <cJSON.h>
+
 #include "api.h"
 #include "storage.h"
 
@@ -122,19 +124,18 @@ static void get_irrigation_settings() {
     const char *URL = "https://us-central1-animal-farm-e321d.cloudfunctions.net/getIrrigationSettings";
     const char *data_holder = "{\"userId\":\"%s\",\"zoneNumber\":%d}";
 
-    char *DATA = malloc(strlen(data_holder) + strlen(user_id) + 1);
+    char *DATA = malloc(strlen(data_holder) + strlen(user_id) + sizeof(zone_number) + 1);
     sprintf(DATA, data_holder, user_id, zone_number);
+    free(user_id);
 
     char irrigation_settings[MAX_HTTP_OUTPUT_BUFFER] = {0};
 
     esp_http_client_config_t config = {
         .url = URL,
         .method = HTTP_METHOD_POST,
-        .query  = "esp",
-        .transport_type = HTTP_TRANSPORT_OVER_TCP,
         .event_handler = _http_event_handler,
         .user_data = irrigation_settings,
-        .timeout_ms = 20000
+        .timeout_ms = 10000
     };
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
@@ -148,12 +149,29 @@ static void get_irrigation_settings() {
                 esp_http_client_get_status_code(client),
                 esp_http_client_get_content_length(client));
         ESP_LOGI(TAG, "HTTP DATA = %s", irrigation_settings);
+
+        cJSON *json = cJSON_Parse(irrigation_settings);
+        cJSON *times_json = cJSON_GetObjectItem(json, "times");
+        uint32_t times_size = cJSON_GetArraySize(times_json);
+
+        storage_set_u32(STORAGE_TIMES_LENGTH, times_size);
+
+        for (int i = 0; i < times_size; i++) {
+            uint32_t time = (uint32_t) cJSON_GetArrayItem(times_json, i)->valuedouble;
+            char *time_key = malloc(strlen(STORAGE_TIMES_BASE));
+            sprintf(time_key, STORAGE_TIMES_BASE, i);
+
+            storage_set_u32(time_key, time);
+
+            free(time_key);
+        }
     } else {
         ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(http_err));
     }
 
-    storage_deinit_nvs();
+    free(DATA);
     esp_http_client_cleanup(client);
+    storage_deinit_nvs();
     vTaskDelete(NULL);
 }
 
