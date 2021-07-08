@@ -166,7 +166,7 @@ void app_main(void) {
         }
     }
 
-    //uint64_t sleep_time = determine_sleep_time();
+    uint64_t sleep_time = determine_sleep_time();
     storage_deinit_nvs();
-    esp_deep_sleep(30 * 1000000);
+    esp_deep_sleep(sleep_time);
 }
