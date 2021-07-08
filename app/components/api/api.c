@@ -3,6 +3,7 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include <freertos/event_groups.h>
 
 #include "esp_log.h"
 #include "esp_system.h"
@@ -19,6 +20,9 @@
 
 #define MAX_HTTP_OUTPUT_BUFFER 2048
 static const char *TAG = "api";
+
+const int irrigation_settings_fetched_event = BIT0;
+static EventGroupHandle_t irrigation_settings_event_group;
 
 esp_err_t _http_event_handler(esp_http_client_event_t *evt) {
     static char *output_buffer;  // Buffer to store response of http request from event handler
@@ -172,12 +176,15 @@ static void get_irrigation_settings() {
     free(DATA);
     esp_http_client_cleanup(client);
     storage_deinit_nvs();
+    xEventGroupSetBits(irrigation_settings_event_group, irrigation_settings_fetched_event);
     vTaskDelete(NULL);
 }
 
 void api_get_irrigation_settings() {
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
+    irrigation_settings_event_group = xEventGroupCreate();
 
     xTaskCreate(&get_irrigation_settings, "get_irrigation_settings", 8192, NULL, 5, NULL);
+    xEventGroupWaitBits(irrigation_settings_event_group, irrigation_settings_fetched_event, false, true, portMAX_DELAY);
 }

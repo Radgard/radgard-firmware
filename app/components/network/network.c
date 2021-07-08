@@ -235,4 +235,6 @@ void network_start_provision_connect_wifi() {
 
 void network_disconnect_wifi() {
     ESP_ERROR_CHECK(esp_wifi_stop());
+    ESP_ERROR_CHECK(esp_wifi_deinit());
+    esp_netif_deinit();
 }
