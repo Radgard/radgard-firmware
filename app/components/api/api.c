@@ -12,6 +12,7 @@
 #include "esp_netif.h"
 #include "esp_tls.h"
 #include "esp_http_client.h"
+#include "esp_sntp.h"
 
 #include <cJSON.h>
 
@@ -164,6 +165,11 @@ static void get_irrigation_settings() {
         storage_set_u32(STORAGE_TIME_ZONE, time_zone);
         storage_set_u32(STORAGE_TIMES_LENGTH, times_size);
 
+        time_t now;
+        time(&now);
+        now += 5;
+
+        uint8_t time_index = 0;
         for (int i = 0; i < times_size; i++) {
             uint32_t time = (uint32_t) cJSON_GetArrayItem(times_json, i)->valuedouble;
             char *time_key = malloc(strlen(STORAGE_TIMES_BASE));
@@ -172,7 +178,13 @@ static void get_irrigation_settings() {
             storage_set_u32(time_key, time);
 
             free(time_key);
+
+            if (time <= now) {
+                time_index += 1;
+            }
         }
+
+        storage_set_u8(STORAGE_TIME_INDEX, time_index);
     } else {
         ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(http_err));
     }

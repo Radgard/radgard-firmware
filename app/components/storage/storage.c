@@ -20,6 +20,7 @@ const char *STORAGE_ZONE_NUMBER = "zone_number";
 const char *STORAGE_TIME_ZONE = "time_zone";
 const char *STORAGE_TIMES_LENGTH = "times_length";
 const char *STORAGE_TIMES_BASE = "time_%d";
+const char *STORAGE_TIME_INDEX = "time_index";
 
 void storage_init_nvs() {
     /* Initialize NVS partition */

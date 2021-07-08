@@ -2,6 +2,7 @@
     Radgard Main
 */
 
+#include <string.h>
 #include <stdio.h>
 
 #include <esp_log.h>
@@ -20,9 +21,28 @@ static void get_irrigation_settings() {
     network_disconnect_wifi();
 }
 
-static void determine_sleep_time() {
-    uint64_t sleep_time_secs = 10;
-    esp_deep_sleep(sleep_time_secs * 1000000);
+static uint64_t determine_sleep_time() {
+    storage_init_nvs();
+
+    uint8_t time_index;
+    esp_err_t get_err = storage_get_u8(STORAGE_TIME_INDEX, &time_index);
+    ESP_ERROR_CHECK(get_err);
+
+    uint32_t start_up_time;
+    char *time_key = malloc(strlen(STORAGE_TIMES_BASE));
+    sprintf(time_key, STORAGE_TIMES_BASE, time_index);
+    get_err = storage_get_u32(time_key, &start_up_time);
+    ESP_ERROR_CHECK(get_err);
+
+    time_t now;
+    time(&now);
+
+    uint64_t sleep_time_secs = start_up_time - now;
+    ESP_LOGI(TAG, "Sleep time: %llu", sleep_time_secs);
+
+    free(time_key);
+    storage_deinit_nvs();
+    return sleep_time_secs * 1000000;
 }
 
 void app_main(void) {
@@ -38,10 +58,9 @@ void app_main(void) {
 
     uint32_t time_zone;
     esp_err_t get_err = storage_get_u32(STORAGE_TIME_ZONE, &time_zone);
-    if (get_err != ESP_OK) {
-        ESP_LOGE(TAG, "Error getting time_zone from storage: %s", esp_err_to_name(get_err));
-        time_zone = 0;
-    }
+    ESP_ERROR_CHECK(get_err);
+
+    storage_deinit_nvs();
 
     if (wakeup_cause != ESP_SLEEP_WAKEUP_TIMER) {
         // Did not wake from deep sleep [physical start of system]
@@ -53,7 +72,6 @@ void app_main(void) {
         // Turn on/off solenoid
     }
 
-    determine_sleep_time();
-
-    storage_deinit_nvs();
+    uint64_t sleep_time = determine_sleep_time();
+    esp_deep_sleep(sleep_time);
 }

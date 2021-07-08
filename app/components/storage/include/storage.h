@@ -4,6 +4,7 @@ const char *STORAGE_ZONE_NUMBER;
 const char *STORAGE_TIME_ZONE;
 const char *STORAGE_TIMES_LENGTH;
 const char *STORAGE_TIMES_BASE;
+const char *STORAGE_TIME_INDEX;
 
 void storage_init_nvs();
 void storage_deinit_nvs();
