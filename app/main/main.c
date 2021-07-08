@@ -44,7 +44,7 @@ static void setup_gpio_pins() {
     gpio_set_level(GPIO_SD_IN1, 0);
     gpio_set_level(GPIO_SD_IN2, 0);
     gpio_set_level(GPIO_BSTC, 0);
-    gpio_set_level(GPIO_BSTC, solenoid_status());
+    gpio_set_level(GPIO_S_OPEN, solenoid_status());
     
     gpio_hold_en(GPIO_SD_IN1);
     gpio_hold_en(GPIO_SD_IN2);
@@ -134,9 +134,29 @@ void app_main(void) {
             ESP_ERROR_CHECK(get_err);
 
             if (time_index % 2 == 0) {
-                // TODO: Turn on solenoid
+                // Turn on solenoid
+                gpio_set_level(GPIO_BSTC, 1);
+
+                vTaskDelay(250 / portTICK_RATE_MS);
+
+                gpio_set_level(GPIO_SD_IN1, 1);
+
+                vTaskDelay(250 / portTICK_RATE_MS);
+
+                gpio_set_level(GPIO_BSTC, 0);
+                gpio_set_level(GPIO_SD_IN1, 0);
             } else {
-                // TODO: Turn off solenoid
+                // Turn off solenoid
+                gpio_set_level(GPIO_BSTC, 1);
+
+                vTaskDelay(250 / portTICK_RATE_MS);
+
+                gpio_set_level(GPIO_SD_IN2, 1);
+
+                vTaskDelay(250 / portTICK_RATE_MS);
+
+                gpio_set_level(GPIO_BSTC, 0);
+                gpio_set_level(GPIO_SD_IN2, 0);
             }
 
             gpio_set_level(GPIO_BSTC, solenoid_status());
