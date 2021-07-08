@@ -1,6 +1,7 @@
 
 const char *STORAGE_USER_ID;
 const char *STORAGE_ZONE_NUMBER;
+const char *STORAGE_TIME_ZONE;
 const char *STORAGE_TIMES_LENGTH;
 const char *STORAGE_TIMES_BASE;
 

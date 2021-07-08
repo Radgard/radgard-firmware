@@ -155,9 +155,13 @@ static void get_irrigation_settings() {
         ESP_LOGI(TAG, "HTTP DATA = %s", irrigation_settings);
 
         cJSON *json = cJSON_Parse(irrigation_settings);
+        cJSON *time_zone_json = cJSON_GetObjectItem(json, "time_zone");
         cJSON *times_json = cJSON_GetObjectItem(json, "times");
+
+        uint32_t time_zone = (uint32_t) time_zone_json->valuedouble;
         uint32_t times_size = cJSON_GetArraySize(times_json);
 
+        storage_set_u32(STORAGE_TIME_ZONE, time_zone);
         storage_set_u32(STORAGE_TIMES_LENGTH, times_size);
 
         for (int i = 0; i < times_size; i++) {
