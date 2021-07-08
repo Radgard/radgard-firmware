@@ -95,14 +95,11 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt) {
 }
 
 static void get_irrigation_settings() {
-    storage_init_nvs();
-
     size_t size;
     esp_err_t size_err = storage_get_str_size(STORAGE_USER_ID, &size);
     if (size_err != ESP_OK) {
         ESP_LOGE(TAG, "Error getting user_id size from storage: %s", esp_err_to_name(size_err));
         
-        storage_deinit_nvs();
         vTaskDelete(NULL);
     }
 
@@ -111,7 +108,6 @@ static void get_irrigation_settings() {
     if (get_err != ESP_OK) {
         ESP_LOGE(TAG, "Error getting user_id from storage: %s", esp_err_to_name(get_err));
         
-        storage_deinit_nvs();
         vTaskDelete(NULL);
     }
 
@@ -120,7 +116,6 @@ static void get_irrigation_settings() {
     if (get_err != ESP_OK) {
         ESP_LOGE(TAG, "Error getting user_id from storage: %s", esp_err_to_name(get_err));
 
-        storage_deinit_nvs();
         vTaskDelete(NULL);
     }
 
@@ -167,7 +162,7 @@ static void get_irrigation_settings() {
 
         time_t now;
         time(&now);
-        now += 5;
+        now += 10;
 
         uint8_t time_index = 0;
         for (int i = 0; i < times_size; i++) {
@@ -191,7 +186,6 @@ static void get_irrigation_settings() {
 
     free(DATA);
     esp_http_client_cleanup(client);
-    storage_deinit_nvs();
     xEventGroupSetBits(irrigation_settings_event_group, irrigation_settings_fetched_event);
     vTaskDelete(NULL);
 }

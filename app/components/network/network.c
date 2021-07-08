@@ -128,7 +128,6 @@ static void time_sync_notification_cb(struct timeval *tv) {
 }
 
 static void network_sync_time() {
-    storage_init_nvs();
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
@@ -150,13 +149,9 @@ static void network_sync_time() {
     localtime_r(&now, &timeinfo);
 
     ESP_ERROR_CHECK(esp_event_loop_delete_default());
-    storage_deinit_nvs();
 }
 
 void network_start_provision_connect_wifi() {
-    /* Initialize NVS partition */
-    storage_init_nvs();
-
     /* Initialize TCP/IP */
     ESP_ERROR_CHECK(esp_netif_init());
 
@@ -256,7 +251,6 @@ void network_start_provision_connect_wifi() {
     /* Wait for Wi-Fi connection */
     xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_EVENT, false, true, portMAX_DELAY);
 
-    storage_deinit_nvs();
     ESP_ERROR_CHECK(esp_event_loop_delete_default());
 
     ESP_LOGI(TAG, "Just connected to WIFI - starting sleep to allow proper configuration");
