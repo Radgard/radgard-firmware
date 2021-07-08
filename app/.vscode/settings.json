@@ -12,7 +12,8 @@
     "string_view": "c",
     "initializer_list": "c",
     "utility": "c",
-    "esp_http_client.h": "c"
+    "esp_http_client.h": "c",
+    "network.h": "c"
   },
   "idf.port": "/dev/cu.usbserial-0001",
   "idf.flashType": "UART"

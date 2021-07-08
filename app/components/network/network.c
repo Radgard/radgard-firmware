@@ -8,6 +8,7 @@
 #include <esp_log.h>
 #include <esp_wifi.h>
 #include <esp_event.h>
+#include "esp_sntp.h"
 
 #include <wifi_provisioning/manager.h>
 
@@ -122,6 +123,36 @@ esp_err_t setup_handler(uint32_t session_id, const uint8_t *inbuf, ssize_t inlen
     return ESP_FAIL;
 }
 
+static void time_sync_notification_cb(struct timeval *tv) {
+    ESP_LOGI(TAG, "Notification of a time synchronization event");
+}
+
+static void network_sync_time() {
+    storage_init_nvs();
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+
+    sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    sntp_setservername(0, "pool.ntp.org");
+    sntp_set_time_sync_notification_cb(time_sync_notification_cb);
+    sntp_set_sync_mode(SNTP_SYNC_MODE_SMOOTH);
+    sntp_init();
+
+    // Wait for time to be set
+    time_t now = 0;
+    struct tm timeinfo = { 0 };
+    int retry = 0;
+    const int retry_count = 10;
+    while (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET && ++retry < retry_count) {
+        ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d)", retry, retry_count);
+        vTaskDelay(2000 / portTICK_PERIOD_MS);
+    }
+    time(&now);
+    localtime_r(&now, &timeinfo);
+
+    ESP_ERROR_CHECK(esp_event_loop_delete_default());
+    storage_deinit_nvs();
+}
+
 void network_start_provision_connect_wifi() {
     /* Initialize NVS partition */
     storage_init_nvs();
@@ -231,6 +262,8 @@ void network_start_provision_connect_wifi() {
     ESP_LOGI(TAG, "Just connected to WIFI - starting sleep to allow proper configuration");
     vTaskDelay(1000 / portTICK_RATE_MS);
     ESP_LOGI(TAG, "Just connected to WIFI - ending sleep to use for API calls");
+
+    network_sync_time();
 }
 
 void network_disconnect_wifi() {

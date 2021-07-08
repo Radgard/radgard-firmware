@@ -181,10 +181,10 @@ static void get_irrigation_settings() {
 }
 
 void api_get_irrigation_settings() {
-    ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     irrigation_settings_event_group = xEventGroupCreate();
 
     xTaskCreate(&get_irrigation_settings, "get_irrigation_settings", 8192, NULL, 5, NULL);
     xEventGroupWaitBits(irrigation_settings_event_group, irrigation_settings_fetched_event, false, true, portMAX_DELAY);
+    ESP_ERROR_CHECK(esp_event_loop_delete_default());
 }
