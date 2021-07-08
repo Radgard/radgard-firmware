@@ -9,11 +9,50 @@
 #include <esp_sleep.h>
 #include "esp_sntp.h"
 
+#include "driver/gpio.h"
+
 #include "network.h"
 #include "storage.h"
 #include "api.h"
 
 static const char *TAG = "main";
+
+static const gpio_num_t GPIO_SD_IN1 = 18;
+static const gpio_num_t GPIO_SD_IN2 = 19;
+static const gpio_num_t GPIO_BSTC = 5;
+static const gpio_num_t GPIO_S_OPEN = 23;
+static const gpio_num_t GPIO_HE_OUT = 32;
+
+static uint32_t solenoid_status() {
+    // TODO: Read HE_OUT to determine S_OPEN state
+    return 0;
+}
+
+static void setup_gpio_pins() {
+    gpio_pad_select_gpio(GPIO_SD_IN1);
+    gpio_pad_select_gpio(GPIO_SD_IN2);
+    gpio_pad_select_gpio(GPIO_BSTC);
+    gpio_pad_select_gpio(GPIO_S_OPEN);
+    gpio_pad_select_gpio(GPIO_HE_OUT);
+
+    gpio_set_direction(GPIO_SD_IN1, GPIO_MODE_OUTPUT);
+    gpio_set_direction(GPIO_SD_IN2, GPIO_MODE_OUTPUT);
+    gpio_set_direction(GPIO_BSTC, GPIO_MODE_OUTPUT);
+    gpio_set_direction(GPIO_S_OPEN, GPIO_MODE_OUTPUT);
+    gpio_set_direction(GPIO_HE_OUT, GPIO_MODE_INPUT);
+
+    gpio_set_level(GPIO_SD_IN1, 0);
+    gpio_set_level(GPIO_SD_IN2, 0);
+    gpio_set_level(GPIO_BSTC, 0);
+    gpio_set_level(GPIO_BSTC, solenoid_status());
+    
+    gpio_hold_en(GPIO_SD_IN1);
+    gpio_hold_en(GPIO_SD_IN2);
+    gpio_hold_en(GPIO_BSTC);
+    gpio_hold_en(GPIO_S_OPEN);
+
+    gpio_deep_sleep_hold_en();
+}
 
 static void get_irrigation_settings() {
     network_start_provision_connect_wifi();
@@ -78,6 +117,7 @@ void app_main(void) {
 
     if (wakeup_cause != ESP_SLEEP_WAKEUP_TIMER) {
         // Did not wake from deep sleep [physical start of system]
+        setup_gpio_pins();
         get_irrigation_settings();
     } else {
         uint32_t time_zone;
@@ -94,17 +134,19 @@ void app_main(void) {
             ESP_ERROR_CHECK(get_err);
 
             if (time_index % 2 == 0) {
-                // Turn on solenoid
+                // TODO: Turn on solenoid
             } else {
-                // Turn off solenoid
+                // TODO: Turn off solenoid
             }
+
+            gpio_set_level(GPIO_BSTC, solenoid_status());
 
             time_index += 1;
             storage_set_u8(STORAGE_TIME_INDEX, time_index);
         }
     }
 
-    uint64_t sleep_time = determine_sleep_time();
+    //uint64_t sleep_time = determine_sleep_time();
     storage_deinit_nvs();
-    esp_deep_sleep(sleep_time);
+    esp_deep_sleep(30 * 1000000);
 }
