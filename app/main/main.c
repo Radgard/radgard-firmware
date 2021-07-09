@@ -117,6 +117,7 @@ void app_main(void) {
 
     if (wakeup_cause != ESP_SLEEP_WAKEUP_TIMER) {
         // Did not wake from deep sleep [physical start of system]
+        ESP_LOGI(TAG, "Starting system from physical start");
         setup_gpio_pins();
         get_irrigation_settings();
     } else {
@@ -126,6 +127,7 @@ void app_main(void) {
 
         if ((timeinfo.tm_hour == (time_zone - 1) % 24 && timeinfo.tm_min >= 58) || (timeinfo.tm_hour == time_zone && timeinfo.tm_min <= 2)) {
             // Within daily update period [23:58 - 00:02]
+            ESP_LOGI(TAG, "Starting system from deep sleep - fetching latest irrigation settings");
             get_irrigation_settings();
         } else {
             // Turn on/off solenoid
@@ -135,6 +137,7 @@ void app_main(void) {
 
             if (time_index % 2 == 0) {
                 // Turn on solenoid
+                ESP_LOGI(TAG, "Starting system from deep sleep - turning on solenoid");
                 gpio_set_level(GPIO_BSTC, 1);
 
                 vTaskDelay(250 / portTICK_RATE_MS);
@@ -147,6 +150,7 @@ void app_main(void) {
                 gpio_set_level(GPIO_SD_IN1, 0);
             } else {
                 // Turn off solenoid
+                ESP_LOGI(TAG, "Starting system from deep sleep - turning off solenoid");
                 gpio_set_level(GPIO_BSTC, 1);
 
                 vTaskDelay(250 / portTICK_RATE_MS);
