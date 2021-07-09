@@ -28,6 +28,22 @@ static uint32_t solenoid_status() {
     return 0;
 }
 
+static void hold_en_gpio_pins() {
+    gpio_hold_en(GPIO_SD_IN1);
+    gpio_hold_en(GPIO_SD_IN2);
+    gpio_hold_en(GPIO_BSTC);
+    gpio_hold_en(GPIO_S_OPEN);
+
+    gpio_deep_sleep_hold_en();
+}
+
+static void hold_dis_gpio_pins() {
+    gpio_hold_dis(GPIO_SD_IN1);
+    gpio_hold_dis(GPIO_SD_IN2);
+    gpio_hold_dis(GPIO_BSTC);
+    gpio_hold_dis(GPIO_S_OPEN);
+}
+
 static void setup_gpio_pins() {
     gpio_pad_select_gpio(GPIO_SD_IN1);
     gpio_pad_select_gpio(GPIO_SD_IN2);
@@ -45,13 +61,6 @@ static void setup_gpio_pins() {
     gpio_set_level(GPIO_SD_IN2, 0);
     gpio_set_level(GPIO_BSTC, 0);
     gpio_set_level(GPIO_S_OPEN, solenoid_status());
-    
-    gpio_hold_en(GPIO_SD_IN1);
-    gpio_hold_en(GPIO_SD_IN2);
-    gpio_hold_en(GPIO_BSTC);
-    gpio_hold_en(GPIO_S_OPEN);
-
-    gpio_deep_sleep_hold_en();
 }
 
 static void get_irrigation_settings() {
@@ -114,11 +123,11 @@ void app_main(void) {
     ESP_LOGI(TAG, "Current time: %ld, hour: %d, minute: %d", now, timeinfo.tm_hour, timeinfo.tm_min);
 
     esp_sleep_wakeup_cause_t wakeup_cause = esp_sleep_get_wakeup_cause();
-
     if (wakeup_cause != ESP_SLEEP_WAKEUP_TIMER) {
         // Did not wake from deep sleep [physical start of system]
         ESP_LOGI(TAG, "Starting system from physical start");
         setup_gpio_pins();
+        hold_en_gpio_pins();
         get_irrigation_settings();
     } else {
         uint32_t time_zone;
@@ -135,16 +144,19 @@ void app_main(void) {
             esp_err_t get_err = storage_get_u8(STORAGE_TIME_INDEX, &time_index);
             ESP_ERROR_CHECK(get_err);
 
+            setup_gpio_pins();
+            hold_dis_gpio_pins();
+
             if (time_index % 2 == 0) {
                 // Turn on solenoid
                 ESP_LOGI(TAG, "Starting system from deep sleep - turning on solenoid");
                 gpio_set_level(GPIO_BSTC, 1);
 
-                vTaskDelay(250 / portTICK_RATE_MS);
+                vTaskDelay(500 / portTICK_RATE_MS);
 
                 gpio_set_level(GPIO_SD_IN1, 1);
 
-                vTaskDelay(250 / portTICK_RATE_MS);
+                vTaskDelay(500 / portTICK_RATE_MS);
 
                 gpio_set_level(GPIO_BSTC, 0);
                 gpio_set_level(GPIO_SD_IN1, 0);
@@ -153,17 +165,19 @@ void app_main(void) {
                 ESP_LOGI(TAG, "Starting system from deep sleep - turning off solenoid");
                 gpio_set_level(GPIO_BSTC, 1);
 
-                vTaskDelay(250 / portTICK_RATE_MS);
+                vTaskDelay(500 / portTICK_RATE_MS);
 
                 gpio_set_level(GPIO_SD_IN2, 1);
 
-                vTaskDelay(250 / portTICK_RATE_MS);
+                vTaskDelay(500 / portTICK_RATE_MS);
 
                 gpio_set_level(GPIO_BSTC, 0);
                 gpio_set_level(GPIO_SD_IN2, 0);
             }
 
-            gpio_set_level(GPIO_BSTC, solenoid_status());
+            gpio_set_level(GPIO_S_OPEN, solenoid_status());
+
+            hold_en_gpio_pins();
 
             time_index += 1;
             storage_set_u8(STORAGE_TIME_INDEX, time_index);
