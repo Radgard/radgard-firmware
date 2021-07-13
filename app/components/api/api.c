@@ -129,12 +129,14 @@ static void get_irrigation_settings() {
     ESP_LOGI(TAG, "Fetched user_id and zone_name from NVS; attempting to get irrigation settings from server");
 
     const char *URL = "https://us-central1-animal-farm-e321d.cloudfunctions.net/getIrrigationSettings";
-    const char *data_holder = "{\"userId\":\"%s\",\"zoneName\":%s}";
+    const char *data_holder = "{\"userId\":\"%s\",\"zoneName\":\"%s\"}";
 
     char *DATA = malloc(strlen(data_holder) + strlen(user_id) + strlen(zone_name) + 1);
     sprintf(DATA, data_holder, user_id, zone_name);
     free(user_id);
     free(zone_name);
+
+    ESP_LOGI(TAG, "Posting data to getIrrigationSettings: %s", DATA);
 
     char irrigation_settings[MAX_HTTP_OUTPUT_BUFFER] = {0};
 
