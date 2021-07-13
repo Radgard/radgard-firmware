@@ -50,6 +50,8 @@ static void event_handler(void* arg, esp_event_base_t event_base, int event_id, 
                          "\n\tPlease reset to factory and retry provisioning",
                          (*reason == WIFI_PROV_STA_AUTH_ERROR) ?
                          "Wi-Fi station authentication failed" : "Wi-Fi access-point not found");
+                
+                storage_reset();
                 break;
             }
             case WIFI_PROV_CRED_SUCCESS:

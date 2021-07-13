@@ -23,3 +23,5 @@ esp_err_t storage_get_u8(const char *key, uint8_t *value);
 esp_err_t storage_get_u32(const char *key, uint32_t *value);
 
 esp_err_t storage_get_str_size(const char *key, size_t *size);
+
+void storage_reset();

@@ -143,3 +143,8 @@ esp_err_t storage_get_u32(const char *key, uint32_t *value) {
 esp_err_t storage_get_str_size(const char *key, size_t *size) {
     return storage_get_str(key, NULL, size);
 }
+
+void storage_reset() {
+    nvs_flash_erase();
+    esp_restart();
+}
