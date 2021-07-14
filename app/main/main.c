@@ -22,6 +22,7 @@ static const gpio_num_t GPIO_SD_IN2 = 19;
 static const gpio_num_t GPIO_BSTC = 5;
 static const gpio_num_t GPIO_S_OPEN = 23;
 static const gpio_num_t GPIO_HE_OUT = 32;
+static const gpio_num_t GPIO_RST = 33;
 
 static uint32_t solenoid_status() {
     // TODO: Read HE_OUT to determine S_OPEN state
@@ -50,12 +51,14 @@ static void setup_gpio_pins() {
     gpio_pad_select_gpio(GPIO_BSTC);
     gpio_pad_select_gpio(GPIO_S_OPEN);
     gpio_pad_select_gpio(GPIO_HE_OUT);
+    gpio_pad_select_gpio(GPIO_RST);
 
     gpio_set_direction(GPIO_SD_IN1, GPIO_MODE_OUTPUT);
     gpio_set_direction(GPIO_SD_IN2, GPIO_MODE_OUTPUT);
     gpio_set_direction(GPIO_BSTC, GPIO_MODE_OUTPUT);
     gpio_set_direction(GPIO_S_OPEN, GPIO_MODE_OUTPUT);
     gpio_set_direction(GPIO_HE_OUT, GPIO_MODE_INPUT);
+    gpio_set_direction(GPIO_RST, GPIO_MODE_INPUT);
 
     gpio_set_level(GPIO_SD_IN1, 0);
     gpio_set_level(GPIO_SD_IN2, 0);
@@ -123,13 +126,9 @@ void app_main(void) {
     ESP_LOGI(TAG, "Current time: %ld, hour: %d, minute: %d", now, timeinfo.tm_hour, timeinfo.tm_min);
 
     esp_sleep_wakeup_cause_t wakeup_cause = esp_sleep_get_wakeup_cause();
-    if (wakeup_cause != ESP_SLEEP_WAKEUP_TIMER) {
-        // Did not wake from deep sleep [physical start of system]
-        ESP_LOGI(TAG, "Starting system from physical start");
-        setup_gpio_pins();
-        hold_en_gpio_pins();
-        get_irrigation_settings();
-    } else {
+    if (wakeup_cause == ESP_SLEEP_WAKEUP_EXT0) {
+        storage_reset();
+    } else if (wakeup_cause == ESP_SLEEP_WAKEUP_TIMER) {
         uint32_t time_zone;
         esp_err_t get_err = storage_get_u32(STORAGE_TIME_ZONE, &time_zone);
         ESP_ERROR_CHECK(get_err);
@@ -182,9 +181,16 @@ void app_main(void) {
             time_index += 1;
             storage_set_u8(STORAGE_TIME_INDEX, time_index);
         }
+    } else {
+        // Did not wake from deep sleep [physical start of system]
+        ESP_LOGI(TAG, "Starting system from physical start");
+        setup_gpio_pins();
+        hold_en_gpio_pins();
+        get_irrigation_settings();
     }
 
     uint64_t sleep_time = determine_sleep_time();
     storage_deinit_nvs();
+    esp_sleep_enable_ext0_wakeup(GPIO_RST, 1);
     esp_deep_sleep(sleep_time);
 }
