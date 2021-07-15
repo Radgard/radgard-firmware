@@ -94,6 +94,32 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt) {
     return ESP_OK;
 }
 
+static void apply_prior_irrigation_settings() {
+    storage_set_u8(STORAGE_TIME_INDEX, 0);
+
+    uint32_t times_length;
+    esp_err_t get_err = storage_get_u32(STORAGE_TIMES_LENGTH, &times_length);
+    if (get_err != ESP_OK) {
+        ESP_LOGE(TAG, "Error getting times_length from storage: %s", esp_err_to_name(get_err));
+        return;
+    }
+
+    for (int i = 0; i < times_length; i++) {
+        char *time_key = malloc(strlen(STORAGE_TIMES_BASE));
+        sprintf(time_key, STORAGE_TIMES_BASE, i);
+
+        uint32_t time;
+        get_err = storage_get_u32(time_key, &time);
+        ESP_ERROR_CHECK(get_err);
+
+        time += 24 * 3600;
+
+        storage_set_u32(time_key, time);
+
+        free(time_key);
+    }
+}
+
 static void get_irrigation_settings() {
     size_t size;
     esp_err_t size_err = storage_get_str_size(STORAGE_USER_ID, &size);
@@ -155,43 +181,50 @@ static void get_irrigation_settings() {
 
     esp_err_t http_err = esp_http_client_perform(client);
     if (http_err == ESP_OK) {
+        int status_code = esp_http_client_get_status_code(client);
         ESP_LOGI(TAG, "HTTP POST Status = %d, content_length = %d",
-                esp_http_client_get_status_code(client),
+                status_code,
                 esp_http_client_get_content_length(client));
-        ESP_LOGI(TAG, "HTTP DATA = %s", irrigation_settings);
 
-        cJSON *json = cJSON_Parse(irrigation_settings);
-        cJSON *time_zone_json = cJSON_GetObjectItem(json, "time_zone");
-        cJSON *times_json = cJSON_GetObjectItem(json, "times");
+        if (status_code == 200) {
+            ESP_LOGI(TAG, "HTTP DATA = %s", irrigation_settings);
 
-        uint32_t time_zone = (uint32_t) time_zone_json->valuedouble;
-        uint32_t times_size = cJSON_GetArraySize(times_json);
+            cJSON *json = cJSON_Parse(irrigation_settings);
+            cJSON *time_zone_json = cJSON_GetObjectItem(json, "time_zone");
+            cJSON *times_json = cJSON_GetObjectItem(json, "times");
 
-        storage_set_u32(STORAGE_TIME_ZONE, time_zone);
-        storage_set_u32(STORAGE_TIMES_LENGTH, times_size);
+            uint32_t time_zone = (uint32_t) time_zone_json->valuedouble;
+            uint32_t times_length = cJSON_GetArraySize(times_json);
 
-        time_t now;
-        time(&now);
-        now += 10;
+            storage_set_u32(STORAGE_TIME_ZONE, time_zone);
+            storage_set_u32(STORAGE_TIMES_LENGTH, times_length);
 
-        uint8_t time_index = 0;
-        for (int i = 0; i < times_size; i++) {
-            uint32_t time = (uint32_t) cJSON_GetArrayItem(times_json, i)->valuedouble;
-            char *time_key = malloc(strlen(STORAGE_TIMES_BASE));
-            sprintf(time_key, STORAGE_TIMES_BASE, i);
+            time_t now;
+            time(&now);
+            now += 10;
 
-            storage_set_u32(time_key, time);
+            uint8_t time_index = 0;
+            for (int i = 0; i < times_length; i++) {
+                uint32_t time = (uint32_t) cJSON_GetArrayItem(times_json, i)->valuedouble;
+                char *time_key = malloc(strlen(STORAGE_TIMES_BASE));
+                sprintf(time_key, STORAGE_TIMES_BASE, i);
 
-            free(time_key);
+                storage_set_u32(time_key, time);
 
-            if (time <= now) {
-                time_index += 1;
+                free(time_key);
+
+                if (time <= now) {
+                    time_index += 1;
+                }
             }
-        }
 
-        storage_set_u8(STORAGE_TIME_INDEX, time_index);
+            storage_set_u8(STORAGE_TIME_INDEX, time_index);
+        } else {
+            apply_prior_irrigation_settings();
+        }
     } else {
         ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(http_err));
+        apply_prior_irrigation_settings();
     }
 
     free(DATA);
