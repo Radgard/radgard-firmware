@@ -151,7 +151,7 @@ void app_main(void) {
                 ESP_LOGI(TAG, "Starting system from deep sleep - turning on solenoid");
                 gpio_set_level(GPIO_BSTC, 1);
 
-                vTaskDelay(500 / portTICK_RATE_MS);
+                vTaskDelay(1000 / portTICK_RATE_MS);
 
                 gpio_set_level(GPIO_SD_IN1, 1);
 
@@ -164,7 +164,7 @@ void app_main(void) {
                 ESP_LOGI(TAG, "Starting system from deep sleep - turning off solenoid");
                 gpio_set_level(GPIO_BSTC, 1);
 
-                vTaskDelay(500 / portTICK_RATE_MS);
+                vTaskDelay(1000 / portTICK_RATE_MS);
 
                 gpio_set_level(GPIO_SD_IN2, 1);
 
