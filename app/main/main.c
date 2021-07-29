@@ -155,7 +155,7 @@ void app_main(void) {
 
                 gpio_set_level(GPIO_SD_IN1, 1);
 
-                vTaskDelay(500 / portTICK_RATE_MS);
+                vTaskDelay(100 / portTICK_RATE_MS);
 
                 gpio_set_level(GPIO_BSTC, 0);
                 gpio_set_level(GPIO_SD_IN1, 0);
@@ -168,7 +168,7 @@ void app_main(void) {
 
                 gpio_set_level(GPIO_SD_IN2, 1);
 
-                vTaskDelay(500 / portTICK_RATE_MS);
+                vTaskDelay(100 / portTICK_RATE_MS);
 
                 gpio_set_level(GPIO_BSTC, 0);
                 gpio_set_level(GPIO_SD_IN2, 0);
