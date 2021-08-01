@@ -79,7 +79,9 @@ static uint64_t determine_sleep_time() {
 
     uint32_t times_size;
     get_err = storage_get_u32(STORAGE_TIMES_LENGTH, &times_size);
-    ESP_ERROR_CHECK(get_err);
+    if (get_err != ESP_OK) {
+        times_size = 0;
+    }
 
     time_t now;
     time(&now);
@@ -92,7 +94,9 @@ static uint64_t determine_sleep_time() {
 
         uint32_t time_zone;
         get_err = storage_get_u32(STORAGE_TIME_ZONE, &time_zone);
-        ESP_ERROR_CHECK(get_err);
+        if (get_err != ESP_OK) {
+            time_zone = 0;
+        }
         
         if (timeinfo.tm_hour >= time_zone) {
             timeinfo.tm_mday += 1;
