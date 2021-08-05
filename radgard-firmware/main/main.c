@@ -24,11 +24,6 @@ static const gpio_num_t GPIO_S_OPEN = 23;
 static const gpio_num_t GPIO_HE_OUT = 32;
 static const gpio_num_t GPIO_RST = 33;
 
-static uint32_t solenoid_status() {
-    // TODO: Read HE_OUT to determine S_OPEN state
-    return 0;
-}
-
 static void hold_en_gpio_pins() {
     gpio_hold_en(GPIO_SD_IN1);
     gpio_hold_en(GPIO_SD_IN2);
@@ -63,7 +58,7 @@ static void setup_gpio_pins() {
     gpio_set_level(GPIO_SD_IN1, 0);
     gpio_set_level(GPIO_SD_IN2, 0);
     gpio_set_level(GPIO_BSTC, 0);
-    gpio_set_level(GPIO_S_OPEN, solenoid_status());
+    gpio_set_level(GPIO_S_OPEN, 0);
 }
 
 static void get_irrigation_settings() {
@@ -88,7 +83,7 @@ static uint64_t determine_sleep_time() {
 
     uint32_t start_up_time;
     if (time_index >= times_size) {
-        // Finished watering plan for day; wake up at 24:00
+        // Finished watering plan for day; wake up at 01:00
         struct tm timeinfo;
         localtime_r(&now, &timeinfo);
 
@@ -103,7 +98,7 @@ static uint64_t determine_sleep_time() {
         }
         timeinfo.tm_sec = 0;
         timeinfo.tm_min = 0;
-        timeinfo.tm_hour = time_zone;
+        timeinfo.tm_hour = time_zone + 1;
         
         start_up_time = (uint32_t) mktime(&timeinfo);
     } else {
@@ -137,8 +132,8 @@ void app_main(void) {
         esp_err_t get_err = storage_get_u32(STORAGE_TIME_ZONE, &time_zone);
         ESP_ERROR_CHECK(get_err);
 
-        if ((timeinfo.tm_hour == (time_zone - 1) % 24 && timeinfo.tm_min >= 58) || (timeinfo.tm_hour == time_zone && timeinfo.tm_min <= 2)) {
-            // Within daily update period [23:58 - 00:02]
+        if ((timeinfo.tm_hour == time_zone || timeinfo.tm_hour == time_zone + 1) && (timeinfo.tm_min < 60)) {
+            // Within daily update period [00:00 - 1:59]
             ESP_LOGI(TAG, "Starting system from deep sleep - fetching latest irrigation settings");
             get_irrigation_settings();
         } else {
@@ -163,6 +158,7 @@ void app_main(void) {
 
                 gpio_set_level(GPIO_BSTC, 0);
                 gpio_set_level(GPIO_SD_IN1, 0);
+                gpio_set_level(GPIO_S_OPEN, 1);
             } else {
                 // Turn off solenoid
                 ESP_LOGI(TAG, "Starting system from deep sleep - turning off solenoid");
@@ -176,9 +172,8 @@ void app_main(void) {
 
                 gpio_set_level(GPIO_BSTC, 0);
                 gpio_set_level(GPIO_SD_IN2, 0);
+                gpio_set_level(GPIO_S_OPEN, 0);
             }
-
-            gpio_set_level(GPIO_S_OPEN, solenoid_status());
 
             hold_en_gpio_pins();
 
