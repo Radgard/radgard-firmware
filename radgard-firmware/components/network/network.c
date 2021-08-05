@@ -99,10 +99,10 @@ esp_err_t setup_handler(uint32_t session_id, const uint8_t *inbuf, ssize_t inlen
         // Parse JSON
         cJSON *json = cJSON_Parse(setup);
         cJSON *user_id_json = cJSON_GetObjectItem(json, "userId");
-        cJSON *zone_name_json = cJSON_GetObjectItem(json, "zoneName");
+        cJSON *zone_id_json = cJSON_GetObjectItem(json, "zoneId");
 
         char *user_id = user_id_json->valuestring;
-        char *zone_name = zone_name_json->valuestring;
+        char *zone_id = zone_id_json->valuestring;
         free(setup);
 
         // Store `user_id` in NVS
@@ -111,10 +111,10 @@ esp_err_t setup_handler(uint32_t session_id, const uint8_t *inbuf, ssize_t inlen
             ESP_LOGE(TAG, "Error saving user_id to storage: %s", esp_err_to_name(set_err));
         }
 
-        // Store `zone_name` in NVS
-        set_err = storage_set_str(STORAGE_ZONE_NAME, zone_name);
+        // Store `zone_id` in NVS
+        set_err = storage_set_str(STORAGE_ZONE_ID, zone_id);
         if (set_err != ESP_OK) {
-            ESP_LOGE(TAG, "Error saving zone_name to storage: %s", esp_err_to_name(set_err));
+            ESP_LOGE(TAG, "Error saving zone_id to storage: %s", esp_err_to_name(set_err));
         }
 
         ESP_LOGI(TAG, "Stored /setup data in NVS");

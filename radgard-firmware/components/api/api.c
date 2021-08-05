@@ -137,30 +137,30 @@ static void get_irrigation_settings() {
         vTaskDelete(NULL);
     }
 
-    size_err = storage_get_str_size(STORAGE_ZONE_NAME, &size);
+    size_err = storage_get_str_size(STORAGE_ZONE_ID, &size);
     if (size_err != ESP_OK) {
-        ESP_LOGE(TAG, "Error getting zone_name size from storage: %s", esp_err_to_name(size_err));
+        ESP_LOGE(TAG, "Error getting zone_id size from storage: %s", esp_err_to_name(size_err));
         
         vTaskDelete(NULL);
     }
 
-    char *zone_name = malloc(size);
-    get_err = storage_get_str(STORAGE_ZONE_NAME, zone_name, &size);
+    char *zone_id = malloc(size);
+    get_err = storage_get_str(STORAGE_ZONE_ID, zone_id, &size);
     if (get_err != ESP_OK) {
-        ESP_LOGE(TAG, "Error getting zone_name from storage: %s", esp_err_to_name(get_err));
+        ESP_LOGE(TAG, "Error getting zone_id from storage: %s", esp_err_to_name(get_err));
 
         vTaskDelete(NULL);
     }
 
-    ESP_LOGI(TAG, "Fetched user_id and zone_name from NVS; attempting to get irrigation settings from server");
+    ESP_LOGI(TAG, "Fetched user_id and zone_id from NVS; attempting to get irrigation settings from server");
 
     const char *URL = "https://us-central1-animal-farm-e321d.cloudfunctions.net/getIrrigationSettings";
-    const char *data_holder = "{\"userId\":\"%s\",\"zoneName\":\"%s\"}";
+    const char *data_holder = "{\"userId\":\"%s\",\"zoneId\":\"%s\"}";
 
-    char *DATA = malloc(strlen(data_holder) + strlen(user_id) + strlen(zone_name) + 1);
-    sprintf(DATA, data_holder, user_id, zone_name);
+    char *DATA = malloc(strlen(data_holder) + strlen(user_id) + strlen(zone_id) + 1);
+    sprintf(DATA, data_holder, user_id, zone_id);
     free(user_id);
-    free(zone_name);
+    free(zone_id);
 
     ESP_LOGI(TAG, "Posting data to getIrrigationSettings: %s", DATA);
 
