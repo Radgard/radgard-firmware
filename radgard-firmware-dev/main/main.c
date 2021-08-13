@@ -134,8 +134,8 @@ void app_main(void) {
 
         if ((timeinfo.tm_hour == time_zone || timeinfo.tm_hour == time_zone + 1) && (timeinfo.tm_min < 60)) {
             // Within daily update period [00:00 - 1:59]
-            ESP_LOGI(TAG, "Starting system from deep sleep - fetching latest irrigation settings");
-            get_irrigation_settings();
+            ESP_LOGI(TAG, "Starting system from deep sleep - resetting MCU to sync RTC and system time, and fetch irrgation settings/firmware update");
+            esp_restart();
         } else {
             // Turn on/off solenoid
             uint8_t time_index;
