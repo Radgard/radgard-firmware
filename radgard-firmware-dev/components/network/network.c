@@ -9,6 +9,7 @@
 #include <esp_wifi.h>
 #include <esp_event.h>
 #include "esp_sntp.h"
+#include <esp_https_ota.h>
 
 #include <wifi_provisioning/manager.h>
 
@@ -18,6 +19,7 @@
 
 #include "network.h"
 #include "storage.h"
+#include "api.h"
 
 static const char *TAG = "network";
 
@@ -28,6 +30,12 @@ static const char *ENDPOINT = "setup";
 /* Signal Wi-Fi events on this event-group */
 const int WIFI_CONNECTED_EVENT = BIT0;
 static EventGroupHandle_t wifi_event_group;
+
+const int firmware_sync_completed = BIT0;
+static EventGroupHandle_t firmware_sync_event_group;
+
+const uint8_t server_cert_pem_start[] asm("_binary_ca_cert_pem_start");
+const uint8_t server_cert_pem_end[] asm("_binary_ca_cert_pem_end");
 
 /* Event handler for catching system events */
 static void event_handler(void* arg, esp_event_base_t event_base, int event_id, void* event_data) {
@@ -153,6 +161,39 @@ static void network_sync_time() {
     ESP_ERROR_CHECK(esp_event_loop_delete_default());
 }
 
+static void network_firmware_sync() {
+    ESP_LOGI(TAG, "Checking for firmware update");
+
+    char *firmware_update_url = api_get_firmware_update_url();
+
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+
+    if (firmware_update_url != NULL) {
+        ESP_LOGI(TAG, "Firmware is out of date, getting new firmware from %s", firmware_update_url);
+        
+        esp_http_client_config_t config = {
+            .url = firmware_update_url,
+            .cert_pem = (char *) server_cert_pem_start
+        };
+
+        esp_err_t ota_err = esp_https_ota(&config);
+
+        free(firmware_update_url);
+
+        if (ota_err == ESP_OK) {
+            ESP_LOGI(TAG, "Firmware update successfully applied, restarting system");
+            esp_restart();
+        }
+    } else {
+        ESP_LOGI(TAG, "Firmware is the latest version");
+    }
+
+    ESP_ERROR_CHECK(esp_event_loop_delete_default());
+
+    xEventGroupSetBits(firmware_sync_event_group, firmware_sync_completed);
+    vTaskDelete(NULL);
+}
+
 void network_start_provision_connect_wifi() {
     /* Initialize TCP/IP */
     ESP_ERROR_CHECK(esp_netif_init());
@@ -260,6 +301,10 @@ void network_start_provision_connect_wifi() {
     ESP_LOGI(TAG, "Just connected to WIFI - ending sleep to use for API calls");
 
     network_sync_time();
+
+    firmware_sync_event_group = xEventGroupCreate();
+    xTaskCreate(&network_firmware_sync, "network_firmware_sync", 8192, NULL, 5, NULL);
+    xEventGroupWaitBits(firmware_sync_event_group, firmware_sync_completed, false, true, portMAX_DELAY);
 }
 
 void network_disconnect_wifi() {
