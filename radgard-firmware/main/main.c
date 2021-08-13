@@ -134,8 +134,8 @@ void app_main(void) {
 
         if ((timeinfo.tm_hour == time_zone || timeinfo.tm_hour == time_zone + 1) && (timeinfo.tm_min < 60)) {
             // Within daily update period [00:00 - 1:59]
-            ESP_LOGI(TAG, "Starting system from deep sleep - fetching latest irrigation settings");
-            get_irrigation_settings();
+            ESP_LOGI(TAG, "Starting system from deep sleep - resetting MCU to sync RTC and system time, and fetch irrgation settings/firmware update");
+            esp_restart();
         } else {
             // Turn on/off solenoid
             uint8_t time_index;
@@ -183,6 +183,8 @@ void app_main(void) {
     } else {
         // Did not wake from deep sleep [physical start of system]
         ESP_LOGI(TAG, "Starting system from physical start");
+        storage_set_u8(STORAGE_VERSION, 1);
+
         setup_gpio_pins();
         hold_en_gpio_pins();
         get_irrigation_settings();

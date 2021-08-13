@@ -1,4 +1,6 @@
 
+const char *STORAGE_VERSION;
+
 const char *STORAGE_USER_ID;
 const char *STORAGE_ZONE_ID;
 

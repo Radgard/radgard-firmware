@@ -15,6 +15,8 @@ static const char *TAG = "storage";
 
 static const char *HANDLE_NAME = "storage";
 
+const char *STORAGE_VERSION = "version";
+
 const char *STORAGE_USER_ID = "user_id";
 const char *STORAGE_ZONE_ID = "zone_id";
 
