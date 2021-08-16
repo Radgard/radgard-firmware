@@ -7,6 +7,7 @@
     "idf.port": "/dev/cu.usbserial-0001",
     "idf.pythonBinPath": "/Users/shawnpatel/.espressif/python_env/idf4.2_py3.7_env/bin/python",
     "files.associations": {
-        "*.inc": "c"
+        "*.inc": "c",
+        "scheme_softap.h": "c"
     }
 }
