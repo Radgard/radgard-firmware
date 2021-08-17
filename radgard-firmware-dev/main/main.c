@@ -187,7 +187,7 @@ void app_main(void) {
     } else {
         // Did not wake from deep sleep [physical start of system]
         ESP_LOGI(TAG, "Starting system from physical start");
-        storage_set_u8(STORAGE_VERSION, 1);
+        storage_set_u8(STORAGE_VERSION, 2);
 
         setup_gpio_pins();
         hold_en_gpio_pins();
