@@ -83,7 +83,7 @@ static uint64_t determine_sleep_time() {
 
     uint32_t start_up_time;
     if (time_index >= times_size) {
-        // Finished watering plan for day; wake up at 01:00
+        // Finished watering plan for day; wake up at 01:30
         struct tm timeinfo;
         localtime_r(&now, &timeinfo);
 
@@ -94,7 +94,7 @@ static uint64_t determine_sleep_time() {
                 timeinfo.tm_mday += 1;
             }
             timeinfo.tm_sec = 0;
-            timeinfo.tm_min = 0;
+            timeinfo.tm_min = 30;
             timeinfo.tm_hour = time_zone + 1;
         } else {
             timeinfo.tm_hour += 1;
@@ -187,7 +187,7 @@ void app_main(void) {
     } else {
         // Did not wake from deep sleep [physical start of system]
         ESP_LOGI(TAG, "Starting system from physical start");
-        storage_set_u8(STORAGE_VERSION, 3);
+        storage_set_u8(STORAGE_VERSION, 4);
 
         setup_gpio_pins();
         hold_en_gpio_pins();
