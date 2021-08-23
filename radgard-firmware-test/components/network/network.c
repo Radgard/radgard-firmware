@@ -44,27 +44,43 @@ static int s_retry_num = 0;
 const int firmware_sync_completed = BIT0;
 static EventGroupHandle_t firmware_sync_event_group;
 
-const uint8_t server_cert_pem_start[] asm("_binary_ca_cert_pem_start");
-const uint8_t server_cert_pem_end[] asm("_binary_ca_cert_pem_end");
+static char *replace_char(char* str, char find, char replace) {
+    char *current_pos = strchr(str, find);
+
+    while (current_pos) {
+        *current_pos = replace;
+        current_pos = strchr(current_pos, find);
+    }
+
+    return str;
+}
 
 static void network_firmware_sync() {
     ESP_LOGI(TAG, "Checking for firmware update");
 
-    char *firmware_update_url = api_get_firmware_update_url();
+    cJSON *firmware_update = api_get_firmware_update_url();
 
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    if (firmware_update_url != NULL) {
-        ESP_LOGI(TAG, "Firmware is out of date, getting new firmware from %s", firmware_update_url);
+    if (firmware_update != NULL) {
+        cJSON *url_json = cJSON_GetObjectItem(firmware_update, "url");
+        cJSON *cert_json = cJSON_GetObjectItem(firmware_update, "cert");
+
+        char *url = url_json->valuestring;
+        char *cert = cert_json->valuestring;
+        replace_char(cert, ' ', '\n');
+        replace_char(cert, '_', ' ');
+
+        ESP_LOGI(TAG, "Firmware is out of date, getting new firmware from %s with cert %s", url, cert);
         
         esp_http_client_config_t config = {
-            .url = firmware_update_url,
-            .cert_pem = (char *) server_cert_pem_start
+            .url = url,
+            .cert_pem = cert
         };
 
         esp_err_t ota_err = esp_https_ota(&config);
 
-        free(firmware_update_url);
+        cJSON_Delete(firmware_update);
 
         if (ota_err == ESP_OK) {
             ESP_LOGI(TAG, "Firmware update successfully applied, restarting system");
