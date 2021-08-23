@@ -34,9 +34,6 @@ static EventGroupHandle_t wifi_event_group;
 const int firmware_sync_completed = BIT0;
 static EventGroupHandle_t firmware_sync_event_group;
 
-const uint8_t server_cert_pem_start[] asm("_binary_ca_cert_pem_start");
-const uint8_t server_cert_pem_end[] asm("_binary_ca_cert_pem_end");
-
 /* Event handler for catching system events */
 static void event_handler(void* arg, esp_event_base_t event_base, int event_id, void* event_data) {
     if (event_base == WIFI_PROV_EVENT) {
@@ -126,6 +123,7 @@ esp_err_t setup_handler(uint32_t session_id, const uint8_t *inbuf, ssize_t inlen
         }
 
         ESP_LOGI(TAG, "Stored /setup data in NVS");
+        cJSON_Delete(json);
 
         return ESP_OK;
     }
@@ -161,24 +159,43 @@ static void network_sync_time() {
     ESP_ERROR_CHECK(esp_event_loop_delete_default());
 }
 
+static char *replace_char(char* str, char find, char replace) {
+    char *current_pos = strchr(str, find);
+
+    while (current_pos) {
+        *current_pos = replace;
+        current_pos = strchr(current_pos, find);
+    }
+
+    return str;
+}
+
 static void network_firmware_sync() {
     ESP_LOGI(TAG, "Checking for firmware update");
 
-    char *firmware_update_url = api_get_firmware_update_url();
+    cJSON *firmware_update = api_get_firmware_update_url();
 
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    if (firmware_update_url != NULL) {
-        ESP_LOGI(TAG, "Firmware is out of date, getting new firmware from %s", firmware_update_url);
+    if (firmware_update != NULL) {
+        cJSON *url_json = cJSON_GetObjectItem(firmware_update, "url");
+        cJSON *cert_json = cJSON_GetObjectItem(firmware_update, "cert");
+
+        char *url = url_json->valuestring;
+        char *cert = cert_json->valuestring;
+        replace_char(cert, ' ', '\n');
+        replace_char(cert, '_', ' ');
+
+        ESP_LOGI(TAG, "Firmware is out of date, getting new firmware from %s with cert %s", url, cert);
         
         esp_http_client_config_t config = {
-            .url = firmware_update_url,
-            .cert_pem = (char *) server_cert_pem_start
+            .url = url,
+            .cert_pem = cert
         };
 
         esp_err_t ota_err = esp_https_ota(&config);
 
-        free(firmware_update_url);
+        cJSON_Delete(firmware_update);
 
         if (ota_err == ESP_OK) {
             ESP_LOGI(TAG, "Firmware update successfully applied, restarting system");

@@ -5,7 +5,10 @@
     "idf.customExtraVars": "{\"OPENOCD_SCRIPTS\":\"/Users/shawnpatel/.espressif/tools/openocd-esp32/v0.10.0-esp32-20200709/openocd-esp32/share/openocd/scripts\"}",
     "idf.espIdfPath": "/Users/shawnpatel/esp/esp-idf",
     "idf.port": "/dev/cu.usbserial-0001",
-    "idf.pythonBinPath": "/Users/shawnpatel/.espressif/python_env/idf4.2_py3.7_env/bin/python"
+    "idf.pythonBinPath": "/Users/shawnpatel/.espressif/python_env/idf4.2_py3.7_env/bin/python",
+    "files.associations": {
+        "*.inc": "c"
+    }
 }
 
 // /dev/cu.usbserial-00DD6DA1

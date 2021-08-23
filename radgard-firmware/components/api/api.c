@@ -19,7 +19,7 @@
 #include "api.h"
 #include "storage.h"
 
-#define MAX_HTTP_OUTPUT_BUFFER 2048
+#define MAX_HTTP_OUTPUT_BUFFER 4096
 static const char *TAG = "api";
 
 const int irrigation_settings_fetched_event = BIT0;
@@ -28,7 +28,7 @@ static EventGroupHandle_t irrigation_settings_event_group;
 const int firmware_update_url_fetched_event = BIT0;
 static EventGroupHandle_t firmware_update_url_event_group;
 
-static char *firmware_update_url = NULL;
+static cJSON *firmware_update = NULL;
 
 esp_err_t _http_event_handler(esp_http_client_event_t *evt) {
     static char *output_buffer;  // Buffer to store response of http request from event handler
@@ -224,6 +224,7 @@ static void get_irrigation_settings() {
             }
 
             storage_set_u8(STORAGE_TIME_INDEX, time_index);
+            cJSON_Delete(json);
         } else {
             apply_prior_irrigation_settings();
         }
@@ -266,13 +267,13 @@ static void get_firmware_update_url() {
 
     ESP_LOGI(TAG, "Posting data to getFirmwareUpdateUrl: %s", DATA);
 
-    char firmware_update_url_buffer[MAX_HTTP_OUTPUT_BUFFER] = {0};
+    char firmware_update_buffer[MAX_HTTP_OUTPUT_BUFFER] = {0};
 
     esp_http_client_config_t config = {
         .url = URL,
         .method = HTTP_METHOD_POST,
         .event_handler = _http_event_handler,
-        .user_data = firmware_update_url_buffer,
+        .user_data = firmware_update_buffer,
         .timeout_ms = 10000
     };
 
@@ -288,10 +289,9 @@ static void get_firmware_update_url() {
         ESP_LOGI(TAG, "HTTP POST Status = %d, content_length = %d", status_code, content_length);
 
         if (status_code == 200) {
-            ESP_LOGI(TAG, "HTTP DATA = %s", firmware_update_url_buffer);
+            ESP_LOGI(TAG, "HTTP DATA = %s", firmware_update_buffer);
 
-            firmware_update_url = malloc(content_length + 1);
-            strncpy(firmware_update_url, firmware_update_url_buffer, content_length + 1);
+            firmware_update = cJSON_Parse(firmware_update_buffer);
         }
     }
 
@@ -301,7 +301,7 @@ static void get_firmware_update_url() {
     vTaskDelete(NULL);
 }
 
-char *api_get_firmware_update_url() {
+cJSON *api_get_firmware_update_url() {
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     firmware_update_url_event_group = xEventGroupCreate();
 
@@ -309,5 +309,5 @@ char *api_get_firmware_update_url() {
     xEventGroupWaitBits(firmware_update_url_event_group, firmware_update_url_fetched_event, false, true, portMAX_DELAY);
     ESP_ERROR_CHECK(esp_event_loop_delete_default());
 
-    return firmware_update_url;
+    return firmware_update;
 }
