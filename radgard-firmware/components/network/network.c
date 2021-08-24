@@ -145,16 +145,12 @@ static void network_sync_time() {
     sntp_init();
 
     // Wait for time to be set
-    time_t now = 0;
-    struct tm timeinfo = { 0 };
     int retry = 0;
-    const int retry_count = 10;
+    const int retry_count = 15;
     while (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET && ++retry < retry_count) {
         ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d)", retry, retry_count);
         vTaskDelay(2000 / portTICK_PERIOD_MS);
     }
-    time(&now);
-    localtime_r(&now, &timeinfo);
 
     ESP_ERROR_CHECK(esp_event_loop_delete_default());
 }

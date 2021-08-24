@@ -81,36 +81,45 @@ static uint64_t determine_sleep_time() {
     time_t now;
     time(&now);
 
-    uint32_t start_up_time;
-    if (time_index >= times_size) {
-        // Finished watering plan for day; wake up at 01:30
-        struct tm timeinfo;
-        localtime_r(&now, &timeinfo);
+    uint64_t sleep_time_secs = 0;
 
-        uint32_t time_zone;
-        get_err = storage_get_u32(STORAGE_TIME_ZONE, &time_zone);
-        if (get_err == ESP_OK) {
-            if (timeinfo.tm_hour >= time_zone) {
-                timeinfo.tm_mday += 1;
-            }
-            timeinfo.tm_sec = 0;
-            timeinfo.tm_min = 30;
-            timeinfo.tm_hour = time_zone + 1;
-        } else {
-            timeinfo.tm_hour += 1;
-        }
-        
-        start_up_time = (uint32_t) mktime(&timeinfo);
+    // System time hasn't been configured properly
+    if (now < 946684800) {
+        // Wake up again in an hour to set system time
+        sleep_time_secs = 3600;
+        ESP_LOGI(TAG, "Sleep time: %llu", sleep_time_secs);
     } else {
-        char *time_key = malloc(strlen(STORAGE_TIMES_BASE));
-        sprintf(time_key, STORAGE_TIMES_BASE, time_index);
-        get_err = storage_get_u32(time_key, &start_up_time);
-        ESP_ERROR_CHECK(get_err);
-        free(time_key);
-    }
+        uint32_t start_up_time;
+        if (time_index >= times_size) {
+            // Finished watering plan for day; wake up at 01:30
+            struct tm timeinfo;
+            localtime_r(&now, &timeinfo);
 
-    uint64_t sleep_time_secs = start_up_time - now;
-    ESP_LOGI(TAG, "Sleep time: %d - %llu = %llu", start_up_time, (uint64_t) now, sleep_time_secs);
+            uint32_t time_zone;
+            get_err = storage_get_u32(STORAGE_TIME_ZONE, &time_zone);
+            if (get_err == ESP_OK) {
+                if (timeinfo.tm_hour >= time_zone) {
+                    timeinfo.tm_mday += 1;
+                }
+                timeinfo.tm_sec = 0;
+                timeinfo.tm_min = 30;
+                timeinfo.tm_hour = time_zone + 1;
+            } else {
+                timeinfo.tm_hour += 1;
+            }
+            
+            start_up_time = (uint32_t) mktime(&timeinfo);
+        } else {
+            char *time_key = malloc(strlen(STORAGE_TIMES_BASE));
+            sprintf(time_key, STORAGE_TIMES_BASE, time_index);
+            get_err = storage_get_u32(time_key, &start_up_time);
+            ESP_ERROR_CHECK(get_err);
+            free(time_key);
+        }
+
+        uint64_t sleep_time_secs = start_up_time - now;
+        ESP_LOGI(TAG, "Sleep time: %d - %llu = %llu", start_up_time, (uint64_t) now, sleep_time_secs);
+    }
 
     return sleep_time_secs * 1000000;
 }
@@ -128,66 +137,72 @@ void app_main(void) {
     if (wakeup_cause == ESP_SLEEP_WAKEUP_EXT0) {
         storage_reset();
     } else if (wakeup_cause == ESP_SLEEP_WAKEUP_TIMER) {
-        uint32_t time_zone;
-        esp_err_t get_err = storage_get_u32(STORAGE_TIME_ZONE, &time_zone);
-
-        if (get_err == ESP_OK) {
-            if ((timeinfo.tm_hour == time_zone || timeinfo.tm_hour == time_zone + 1) && (timeinfo.tm_min < 60)) {
-                // Within daily update period [00:00 - 1:59]
-                ESP_LOGI(TAG, "Starting system from deep sleep - fetching latest irrigation settings");
-                get_irrigation_settings();
-            } else {
-                // Turn on/off solenoid
-                uint8_t time_index;
-                esp_err_t get_err = storage_get_u8(STORAGE_TIME_INDEX, &time_index);
-                ESP_ERROR_CHECK(get_err);
-
-                setup_gpio_pins();
-                hold_dis_gpio_pins();
-
-                if (time_index % 2 == 0) {
-                    // Turn on solenoid
-                    ESP_LOGI(TAG, "Starting system from deep sleep - turning on solenoid");
-                    gpio_set_level(GPIO_BSTC, 1);
-
-                    vTaskDelay(1000 / portTICK_RATE_MS);
-
-                    gpio_set_level(GPIO_SD_IN1, 1);
-
-                    vTaskDelay(100 / portTICK_RATE_MS);
-
-                    gpio_set_level(GPIO_BSTC, 0);
-                    gpio_set_level(GPIO_SD_IN1, 0);
-                    gpio_set_level(GPIO_S_OPEN, 1);
-                } else {
-                    // Turn off solenoid
-                    ESP_LOGI(TAG, "Starting system from deep sleep - turning off solenoid");
-                    gpio_set_level(GPIO_BSTC, 1);
-
-                    vTaskDelay(1000 / portTICK_RATE_MS);
-
-                    gpio_set_level(GPIO_SD_IN2, 1);
-
-                    vTaskDelay(100 / portTICK_RATE_MS);
-
-                    gpio_set_level(GPIO_BSTC, 0);
-                    gpio_set_level(GPIO_SD_IN2, 0);
-                    gpio_set_level(GPIO_S_OPEN, 0);
-                }
-
-                hold_en_gpio_pins();
-
-                time_index += 1;
-                storage_set_u8(STORAGE_TIME_INDEX, time_index);
-            }
-        } else {
-            ESP_LOGI(TAG, "Starting system from deep sleep - didn't have initial server update, fetching latest irrigation settings");
+        // System time hasn't been configured properly
+        if (now < 946684800) {
+            ESP_LOGI(TAG, "Starting system from deep sleep - system time has not been initially set");
             get_irrigation_settings();
+        } else {
+            uint32_t time_zone;
+            esp_err_t get_err = storage_get_u32(STORAGE_TIME_ZONE, &time_zone);
+
+            if (get_err == ESP_OK) {
+                if ((timeinfo.tm_hour == time_zone || timeinfo.tm_hour == time_zone + 1) && (timeinfo.tm_min < 60)) {
+                    // Within daily update period [00:00 - 1:59]
+                    ESP_LOGI(TAG, "Starting system from deep sleep - fetching latest irrigation settings");
+                    get_irrigation_settings();
+                } else {
+                    // Turn on/off solenoid
+                    uint8_t time_index;
+                    esp_err_t get_err = storage_get_u8(STORAGE_TIME_INDEX, &time_index);
+                    ESP_ERROR_CHECK(get_err);
+
+                    setup_gpio_pins();
+                    hold_dis_gpio_pins();
+
+                    if (time_index % 2 == 0) {
+                        // Turn on solenoid
+                        ESP_LOGI(TAG, "Starting system from deep sleep - turning on solenoid");
+                        gpio_set_level(GPIO_BSTC, 1);
+
+                        vTaskDelay(1000 / portTICK_RATE_MS);
+
+                        gpio_set_level(GPIO_SD_IN1, 1);
+
+                        vTaskDelay(100 / portTICK_RATE_MS);
+
+                        gpio_set_level(GPIO_BSTC, 0);
+                        gpio_set_level(GPIO_SD_IN1, 0);
+                        gpio_set_level(GPIO_S_OPEN, 1);
+                    } else {
+                        // Turn off solenoid
+                        ESP_LOGI(TAG, "Starting system from deep sleep - turning off solenoid");
+                        gpio_set_level(GPIO_BSTC, 1);
+
+                        vTaskDelay(1000 / portTICK_RATE_MS);
+
+                        gpio_set_level(GPIO_SD_IN2, 1);
+
+                        vTaskDelay(100 / portTICK_RATE_MS);
+
+                        gpio_set_level(GPIO_BSTC, 0);
+                        gpio_set_level(GPIO_SD_IN2, 0);
+                        gpio_set_level(GPIO_S_OPEN, 0);
+                    }
+
+                    hold_en_gpio_pins();
+
+                    time_index += 1;
+                    storage_set_u8(STORAGE_TIME_INDEX, time_index);
+                }
+            } else {
+                ESP_LOGI(TAG, "Starting system from deep sleep - didn't have initial server update, fetching latest irrigation settings");
+                get_irrigation_settings();
+            }
         }
     } else {
         // Did not wake from deep sleep [physical start of system]
         ESP_LOGI(TAG, "Starting system from physical start");
-        storage_set_u8(STORAGE_VERSION, 5);
+        storage_set_u8(STORAGE_VERSION, 6);
 
         setup_gpio_pins();
         hold_en_gpio_pins();
