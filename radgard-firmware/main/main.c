@@ -117,7 +117,7 @@ static uint64_t determine_sleep_time() {
             free(time_key);
         }
 
-        uint64_t sleep_time_secs = start_up_time - now;
+        sleep_time_secs = start_up_time - now;
         ESP_LOGI(TAG, "Sleep time: %d - %llu = %llu", start_up_time, (uint64_t) now, sleep_time_secs);
     }
 
