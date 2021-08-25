@@ -85,36 +85,45 @@ static uint64_t determine_sleep_time() {
 
     // System time hasn't been configured properly
     if (now < 946684800) {
-        // Wake up again in an hour to set system time
-        sleep_time_secs = 3600;
+        // Wake up again in 30 minutes to set system time
+        sleep_time_secs = 1800;
         ESP_LOGI(TAG, "Sleep time: %llu", sleep_time_secs);
     } else {
-        uint32_t start_up_time;
-        if (time_index >= times_size) {
-            // Finished watering plan for day; wake up at 01:30
-            struct tm timeinfo;
-            localtime_r(&now, &timeinfo);
+        uint32_t irrigation_fetch_time;
 
-            uint32_t time_zone;
-            get_err = storage_get_u32(STORAGE_TIME_ZONE, &time_zone);
-            if (get_err == ESP_OK) {
-                if (timeinfo.tm_hour >= time_zone) {
-                    timeinfo.tm_mday += 1;
-                }
-                timeinfo.tm_sec = 0;
-                timeinfo.tm_min = 30;
-                timeinfo.tm_hour = time_zone + 1;
-            } else {
-                timeinfo.tm_hour += 1;
+        // Wake up at 01:30 for irrigation fetch
+        struct tm timeinfo;
+        localtime_r(&now, &timeinfo);
+
+        uint32_t time_zone;
+        get_err = storage_get_u32(STORAGE_TIME_ZONE, &time_zone);
+        if (get_err == ESP_OK) {
+            if (timeinfo.tm_hour >= time_zone) {
+                timeinfo.tm_mday += 1;
             }
-            
-            start_up_time = (uint32_t) mktime(&timeinfo);
+            timeinfo.tm_sec = 0;
+            timeinfo.tm_min = 30;
+            timeinfo.tm_hour = time_zone + 1;
         } else {
+            timeinfo.tm_hour += 1;
+        }
+        
+        irrigation_fetch_time = (uint32_t) mktime(&timeinfo);
+
+        uint32_t start_up_time = 0;
+        
+        // If another time_index exists, use that time for the startup
+        if (time_index < times_size) {
             char *time_key = malloc(strlen(STORAGE_TIMES_BASE));
             sprintf(time_key, STORAGE_TIMES_BASE, time_index);
             get_err = storage_get_u32(time_key, &start_up_time);
             ESP_ERROR_CHECK(get_err);
             free(time_key);
+        }
+        
+        // Override start_up_time if time_index beyond bounds or next startup is after daily irrigation fetch
+        if (start_up_time == 0 || start_up_time > irrigation_fetch_time) {
+            start_up_time = irrigation_fetch_time;
         }
 
         sleep_time_secs = start_up_time - now;
@@ -146,8 +155,8 @@ void app_main(void) {
             esp_err_t get_err = storage_get_u32(STORAGE_TIME_ZONE, &time_zone);
 
             if (get_err == ESP_OK) {
-                if ((timeinfo.tm_hour == time_zone || timeinfo.tm_hour == time_zone + 1) && (timeinfo.tm_min < 60)) {
-                    // Within daily update period [00:00 - 1:59]
+                if (timeinfo.tm_hour == time_zone || (timeinfo.tm_hour == time_zone + 1 && timeinfo.tm_min < 60) || (timeinfo.tm_hour == time_zone + 2 && timeinfo.tm_min <= 30)) {
+                    // Within daily update period [00:00 - 2:30]
                     ESP_LOGI(TAG, "Starting system from deep sleep - fetching latest irrigation settings");
                     get_irrigation_settings();
                 } else {

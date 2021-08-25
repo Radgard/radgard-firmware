@@ -100,6 +100,8 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt) {
 }
 
 static void apply_prior_irrigation_settings() {
+    ESP_LOGI(TAG, "Cannot fetch irrigation settings -- applying prior settings");
+
     storage_set_u8(STORAGE_TIME_INDEX, 0);
 
     uint32_t times_length;
@@ -109,6 +111,9 @@ static void apply_prior_irrigation_settings() {
         return;
     }
 
+    time_t now;
+    time(&now);
+
     for (int i = 0; i < times_length; i++) {
         char *time_key = malloc(strlen(STORAGE_TIMES_BASE));
         sprintf(time_key, STORAGE_TIMES_BASE, i);
@@ -116,10 +121,14 @@ static void apply_prior_irrigation_settings() {
         uint32_t time;
         get_err = storage_get_u32(time_key, &time);
         ESP_ERROR_CHECK(get_err);
-
-        time += 24 * 3600;
-
-        storage_set_u32(time_key, time);
+        
+        if (i == 0 && time > now) {
+            free(time_key);
+            break;
+        } else {
+            time += 24 * 3600;
+            storage_set_u32(time_key, time);
+        }
 
         free(time_key);
     }

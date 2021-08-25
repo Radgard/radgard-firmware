@@ -34,6 +34,8 @@ static EventGroupHandle_t wifi_event_group;
 const int firmware_sync_completed = BIT0;
 static EventGroupHandle_t firmware_sync_event_group;
 
+static int disconnect_count = 0;
+
 /* Event handler for catching system events */
 static void event_handler(void* arg, esp_event_base_t event_base, int event_id, void* event_data) {
     if (event_base == WIFI_PROV_EVENT) {
@@ -77,8 +79,14 @@ static void event_handler(void* arg, esp_event_base_t event_base, int event_id, 
         /* Signal main application to continue execution */
         xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_EVENT);
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        ESP_LOGI(TAG, "Disconnected. Connecting to the AP again...");
-        esp_wifi_connect();
+        if (disconnect_count < 10) {
+            ESP_LOGI(TAG, "Disconnected. Connecting to the AP again...");
+            esp_wifi_connect();
+            disconnect_count += 1;
+        } else {
+            ESP_LOGI(TAG, "Disconnected. Skipping network init...");
+            xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_EVENT);
+        }
     }
 }
 
