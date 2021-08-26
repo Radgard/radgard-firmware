@@ -98,7 +98,7 @@ static uint64_t determine_sleep_time() {
         uint32_t time_zone;
         get_err = storage_get_u32(STORAGE_TIME_ZONE, &time_zone);
         if (get_err == ESP_OK) {
-            if (timeinfo.tm_hour >= time_zone) {
+            if (timeinfo.tm_hour > time_zone + 1 || (timeinfo.tm_hour == time_zone + 1 && timeinfo.tm_min >= 30)) {
                 timeinfo.tm_mday += 1;
             }
             timeinfo.tm_sec = 0;
@@ -211,7 +211,7 @@ void app_main(void) {
     } else {
         // Did not wake from deep sleep [physical start of system]
         ESP_LOGI(TAG, "Starting system from physical start");
-        storage_set_u8(STORAGE_VERSION, 6);
+        storage_set_u8(STORAGE_VERSION, 7);
 
         setup_gpio_pins();
         hold_en_gpio_pins();

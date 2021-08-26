@@ -108,6 +108,7 @@ static void apply_prior_irrigation_settings() {
     esp_err_t get_err = storage_get_u32(STORAGE_TIMES_LENGTH, &times_length);
     if (get_err != ESP_OK) {
         ESP_LOGE(TAG, "Error getting times_length from storage: %s", esp_err_to_name(get_err));
+        storage_set_u32(STORAGE_TIMES_LENGTH, 0);
         return;
     }
 
