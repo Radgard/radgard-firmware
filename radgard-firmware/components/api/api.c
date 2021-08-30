@@ -109,40 +109,19 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt) {
     return ESP_OK;
 }
 
-static void apply_prior_irrigation_settings() {
-    ESP_LOGI(TAG, "Cannot fetch irrigation settings -- applying prior settings");
+static void reset_sig_rains() {
+    ESP_LOGI(TAG, "Failed to get latest irrigation settings -- resetting sig_rains");
 
-    storage_set_u8(STORAGE_TIME_INDEX, 0);
+    size_t sig_rains_size = 7 * sizeof(uint8_t);
+    uint8_t *sig_rains = malloc(sig_rains_size);
 
-    uint32_t times_length;
-    esp_err_t get_err = storage_get_u32(STORAGE_TIMES_LENGTH, &times_length);
-    if (get_err != ESP_OK) {
-        ESP_LOGE(TAG, "Error getting times_length from storage: %s", esp_err_to_name(get_err));
-        storage_set_u32(STORAGE_TIMES_LENGTH, 0);
-        return;
+    for (int i = 0; i < 7; i++) {
+        sig_rains[i] = 0;
     }
 
-    time_t now;
-    time(&now);
+    storage_set_blob(STORAGE_SIG_RAINS, sig_rains, sig_rains_size);
 
-    for (int i = 0; i < times_length; i++) {
-        char *time_key = malloc(strlen(STORAGE_TIMES_BASE));
-        sprintf(time_key, STORAGE_TIMES_BASE, i);
-
-        uint32_t time;
-        get_err = storage_get_u32(time_key, &time);
-        ESP_ERROR_CHECK(get_err);
-        
-        if (i == 0 && time > now) {
-            free(time_key);
-            break;
-        } else {
-            time += 24 * 3600;
-            storage_set_u32(time_key, time);
-        }
-
-        free(time_key);
-    }
+    free(sig_rains);
 }
 
 static void get_irrigation_settings() {
@@ -179,7 +158,7 @@ static void get_irrigation_settings() {
 
     ESP_LOGI(TAG, "Fetched user_id and zone_id from NVS; attempting to get irrigation settings from server");
 
-    const char *URL = "https://us-central1-animal-farm-e321d.cloudfunctions.net/getIrrigationSettings";
+    const char *URL = "https://us-central1-animal-farm-e321d.cloudfunctions.net/getIrrigationSettings2";
     const char *data_holder = "{\"userId\":\"%s\",\"zoneId\":\"%s\"}";
 
     char *DATA = malloc(strlen(data_holder) + strlen(user_id) + strlen(zone_id) + 1);
@@ -217,40 +196,55 @@ static void get_irrigation_settings() {
             cJSON *json = cJSON_Parse(irrigation_settings);
             cJSON *time_zone_json = cJSON_GetObjectItem(json, "time_zone");
             cJSON *times_json = cJSON_GetObjectItem(json, "times");
+            cJSON *sig_rains_json = cJSON_GetObjectItem(json, "sig_rains");
 
             uint32_t time_zone = (uint32_t) time_zone_json->valuedouble;
-            uint32_t times_length = cJSON_GetArraySize(times_json);
 
             storage_set_u32(STORAGE_TIME_ZONE, time_zone);
-            storage_set_u32(STORAGE_TIMES_LENGTH, times_length);
 
-            time_t now;
-            time(&now);
-            now += 10;
+            uint32_t times_length = cJSON_GetArraySize(times_json);
 
-            uint8_t time_index = 0;
             for (int i = 0; i < times_length; i++) {
-                uint32_t time = (uint32_t) cJSON_GetArrayItem(times_json, i)->valuedouble;
-                char *time_key = malloc(strlen(STORAGE_TIMES_BASE));
-                sprintf(time_key, STORAGE_TIMES_BASE, i);
+                cJSON *day_times_json = cJSON_GetArrayItem(times_json, i);
 
-                storage_set_u32(time_key, time);
+                uint32_t day_times_length = cJSON_GetArraySize(day_times_json);
+                size_t day_times_size = day_times_length * sizeof(uint32_t);
 
-                free(time_key);
+                uint32_t *day_times = malloc(day_times_size);
 
-                if (time <= now) {
-                    time_index += 1;
+                for (int j = 0; j < day_times_length; j++) {
+                    uint32_t day_time = (uint32_t) cJSON_GetArrayItem(day_times_json, j)->valuedouble;
+                    day_times[j] = day_time;
                 }
+
+                char *day_times_key = malloc(strlen(STORAGE_TIME_BASE));
+                sprintf(day_times_key, STORAGE_TIME_BASE, i);
+
+                storage_set_blob(day_times_key, day_times, day_times_size);
+
+                free(day_times);
+                free(day_times_key);
             }
 
-            storage_set_u8(STORAGE_TIME_INDEX, time_index);
+            uint32_t sig_rains_length = cJSON_GetArraySize(sig_rains_json);
+            size_t sig_rains_size = sig_rains_length * sizeof(uint8_t);
+            uint8_t *sig_rains = malloc(sig_rains_size);
+
+            for (int i = 0; i < sig_rains_length; i++) {
+                uint8_t sig_rain = (uint8_t) cJSON_IsTrue(cJSON_GetArrayItem(sig_rains_json, i));
+                sig_rains[i] = sig_rain;
+            }
+
+            storage_set_blob(STORAGE_SIG_RAINS, sig_rains, sig_rains_size);
+
+            free(sig_rains);
             cJSON_Delete(json);
         } else {
-            apply_prior_irrigation_settings();
+            reset_sig_rains();
         }
     } else {
         ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(http_err));
-        apply_prior_irrigation_settings();
+        reset_sig_rains();
     }
 
     free(DATA);

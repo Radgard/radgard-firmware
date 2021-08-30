@@ -21,9 +21,10 @@ const char *STORAGE_USER_ID = "user_id";
 const char *STORAGE_ZONE_ID = "zone_id";
 
 const char *STORAGE_TIME_ZONE = "time_zone";
-const char *STORAGE_TIMES_LENGTH = "times_length";
-const char *STORAGE_TIMES_BASE = "time_%d";
-const char *STORAGE_TIME_INDEX = "time_index";
+const char *STORAGE_TIME_BASE = "time_%d";
+const char *STORAGE_SIG_RAINS = "sig_rains";
+
+const char *STORAGE_SOLENOID_OPEN = "solenoid_open";
 
 void storage_init_nvs() {
     /* Initialize NVS partition */
@@ -104,6 +105,18 @@ esp_err_t storage_set_u32(const char *key, uint32_t value) {
     return set_err;
 }
 
+esp_err_t storage_set_blob(const char *key, const void *value, size_t size) {
+    nvs_handle handle = get_write_handle();
+
+    esp_err_t set_err = nvs_set_blob(handle, key, value, size);
+
+    nvs_close(handle);
+
+    ESP_LOGI(TAG, "Attempted to set blob to key (%s)", key);
+
+    return set_err;
+}
+
 esp_err_t storage_get_str(const char *key, char *value, size_t *size) {
     nvs_handle handle = get_read_handle();
 
@@ -142,8 +155,36 @@ esp_err_t storage_get_u32(const char *key, uint32_t *value) {
     return get_err;
 }
 
+esp_err_t storage_get_blob(const char *key, const void *value, size_t *size) {
+    nvs_handle handle = get_read_handle();
+
+    esp_err_t get_err = nvs_get_blob(handle, key, value, size);
+
+    nvs_close(handle);
+
+    ESP_LOGI(TAG, "Attempted to get blob from key (%s)", key);
+
+    return get_err;
+}
+
 esp_err_t storage_get_str_size(const char *key, size_t *size) {
     return storage_get_str(key, NULL, size);
+}
+
+esp_err_t storage_get_blob_size(const char *key, size_t *size) {
+    return storage_get_blob(key, NULL, size);
+}
+
+esp_err_t storage_remove(const char *key) {
+    nvs_handle handle = get_write_handle();
+
+    esp_err_t erase_err = nvs_erase_key(handle, key);
+
+    nvs_close(handle);
+
+    ESP_LOGI(TAG, "Attempted to remove key (%s)", key);
+
+    return erase_err;
 }
 
 void storage_reset() {
