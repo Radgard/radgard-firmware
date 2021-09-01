@@ -4,6 +4,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 
 #include <esp_log.h>
 #include <esp_sleep.h>
@@ -21,8 +22,10 @@ static const gpio_num_t GPIO_SD_IN1 = 18;
 static const gpio_num_t GPIO_SD_IN2 = 19;
 static const gpio_num_t GPIO_BSTC = 5;
 static const gpio_num_t GPIO_S_OPEN = 23;
-static const gpio_num_t GPIO_HE_OUT = 32;
+static const gpio_num_t GPIO_MAN = 32;
 static const gpio_num_t GPIO_RST = 33;
+
+#define GPIO_WAKEUP_PINS_BITMASK 0x300000000
 
 static void hold_en_gpio_pins() {
     gpio_hold_en(GPIO_SD_IN1);
@@ -45,14 +48,14 @@ static void setup_gpio_pins() {
     gpio_pad_select_gpio(GPIO_SD_IN2);
     gpio_pad_select_gpio(GPIO_BSTC);
     gpio_pad_select_gpio(GPIO_S_OPEN);
-    gpio_pad_select_gpio(GPIO_HE_OUT);
+    gpio_pad_select_gpio(GPIO_MAN);
     gpio_pad_select_gpio(GPIO_RST);
 
     gpio_set_direction(GPIO_SD_IN1, GPIO_MODE_OUTPUT);
     gpio_set_direction(GPIO_SD_IN2, GPIO_MODE_OUTPUT);
     gpio_set_direction(GPIO_BSTC, GPIO_MODE_OUTPUT);
     gpio_set_direction(GPIO_S_OPEN, GPIO_MODE_OUTPUT);
-    gpio_set_direction(GPIO_HE_OUT, GPIO_MODE_INPUT);
+    gpio_set_direction(GPIO_MAN, GPIO_MODE_INPUT);
     gpio_set_direction(GPIO_RST, GPIO_MODE_INPUT);
 
     gpio_set_level(GPIO_SD_IN1, 0);
@@ -192,6 +195,34 @@ static uint64_t determine_sleep_time() {
     return sleep_time_secs * 1000000;
 }
 
+static void open_solenoid() {
+    gpio_set_level(GPIO_BSTC, 1);
+
+    vTaskDelay(1000 / portTICK_RATE_MS);
+
+    gpio_set_level(GPIO_SD_IN1, 1);
+
+    vTaskDelay(100 / portTICK_RATE_MS);
+
+    gpio_set_level(GPIO_BSTC, 0);
+    gpio_set_level(GPIO_SD_IN1, 0);
+    gpio_set_level(GPIO_S_OPEN, 1);
+}
+
+static void close_solenoid() {
+    gpio_set_level(GPIO_BSTC, 1);
+
+    vTaskDelay(1000 / portTICK_RATE_MS);
+
+    gpio_set_level(GPIO_SD_IN2, 1);
+
+    vTaskDelay(100 / portTICK_RATE_MS);
+
+    gpio_set_level(GPIO_BSTC, 0);
+    gpio_set_level(GPIO_SD_IN2, 0);
+    gpio_set_level(GPIO_S_OPEN, 0);
+}
+
 void app_main(void) {
     storage_init_nvs();
 
@@ -202,8 +233,36 @@ void app_main(void) {
     ESP_LOGI(TAG, "Current time: %ld, hour: %d, minute: %d", now, timeinfo.tm_hour, timeinfo.tm_min);
 
     esp_sleep_wakeup_cause_t wakeup_cause = esp_sleep_get_wakeup_cause();
-    if (wakeup_cause == ESP_SLEEP_WAKEUP_EXT0) {
-        storage_reset();
+    if (wakeup_cause == ESP_SLEEP_WAKEUP_EXT1) {
+        uint64_t gpio_wakeup_pin_mask = esp_sleep_get_ext1_wakeup_status();
+        uint64_t gpio_wakeup_pin = log(gpio_wakeup_pin_mask) / log(2);
+
+        ESP_LOGI(TAG, "Starting system from deep sleep - wake up from GPIO %llu", gpio_wakeup_pin);
+
+        if (gpio_wakeup_pin == GPIO_MAN) {
+            // GPIO 32 (MAN pin) -- enable/disable manual mode
+            uint8_t manual_on;
+            esp_err_t get_err = storage_get_u8(STORAGE_MANUAL_ON, &manual_on);
+
+            setup_gpio_pins();
+            hold_dis_gpio_pins();
+            
+            // Check if manual mode is already on
+            if (get_err == ESP_OK && manual_on == 1) {
+                ESP_LOGI(TAG, "MAN button triggered - turning off manual mode");
+                storage_remove(STORAGE_MANUAL_ON);
+                close_solenoid();
+            } else {
+                ESP_LOGI(TAG, "MAN button triggered - turning on manual mode");
+                storage_set_u8(STORAGE_MANUAL_ON, 1);
+                open_solenoid();
+            }
+
+            hold_en_gpio_pins();
+        } else if (gpio_wakeup_pin == GPIO_RST) {
+            // GPIO 33 (RST pin) - reset the device
+            storage_reset();
+        }
     } else if (wakeup_cause == ESP_SLEEP_WAKEUP_TIMER) {
         // System time hasn't been configured properly
         if (now < 946684800) {
@@ -230,31 +289,11 @@ void app_main(void) {
                         if (solenoid_open) {
                             // Turn on solenoid
                             ESP_LOGI(TAG, "Starting system from deep sleep - turning on solenoid");
-                            gpio_set_level(GPIO_BSTC, 1);
-
-                            vTaskDelay(1000 / portTICK_RATE_MS);
-
-                            gpio_set_level(GPIO_SD_IN1, 1);
-
-                            vTaskDelay(100 / portTICK_RATE_MS);
-
-                            gpio_set_level(GPIO_BSTC, 0);
-                            gpio_set_level(GPIO_SD_IN1, 0);
-                            gpio_set_level(GPIO_S_OPEN, 1);
+                            open_solenoid();
                         } else {
                             // Turn off solenoid
                             ESP_LOGI(TAG, "Starting system from deep sleep - turning off solenoid");
-                            gpio_set_level(GPIO_BSTC, 1);
-
-                            vTaskDelay(1000 / portTICK_RATE_MS);
-
-                            gpio_set_level(GPIO_SD_IN2, 1);
-
-                            vTaskDelay(100 / portTICK_RATE_MS);
-
-                            gpio_set_level(GPIO_BSTC, 0);
-                            gpio_set_level(GPIO_SD_IN2, 0);
-                            gpio_set_level(GPIO_S_OPEN, 0);
+                            close_solenoid();
                         }
 
                         hold_en_gpio_pins();
@@ -271,7 +310,7 @@ void app_main(void) {
     } else {
         // Did not wake from deep sleep [physical start of system]
         ESP_LOGI(TAG, "Starting system from physical start");
-        storage_set_u8(STORAGE_VERSION, 9);
+        storage_set_u8(STORAGE_VERSION, 10);
 
         setup_gpio_pins();
         hold_en_gpio_pins();
@@ -280,6 +319,6 @@ void app_main(void) {
 
     uint64_t sleep_time = determine_sleep_time();
     storage_deinit_nvs();
-    esp_sleep_enable_ext0_wakeup(GPIO_RST, 1);
+    esp_sleep_enable_ext1_wakeup(GPIO_WAKEUP_PINS_BITMASK, ESP_EXT1_WAKEUP_ANY_HIGH);
     esp_deep_sleep(sleep_time);
 }

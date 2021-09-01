@@ -25,6 +25,7 @@ const char *STORAGE_TIME_BASE = "time_%d";
 const char *STORAGE_SIG_RAINS = "sig_rains";
 
 const char *STORAGE_SOLENOID_OPEN = "solenoid_open";
+const char *STORAGE_MANUAL_ON = "manual_on";
 
 void storage_init_nvs() {
     /* Initialize NVS partition */

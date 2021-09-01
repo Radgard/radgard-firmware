@@ -9,6 +9,7 @@ const char *STORAGE_TIME_BASE;
 const char *STORAGE_SIG_RAINS;
 
 const char *STORAGE_SOLENOID_OPEN;
+const char *STORAGE_MANUAL_ON;
 
 void storage_init_nvs();
 void storage_deinit_nvs();
