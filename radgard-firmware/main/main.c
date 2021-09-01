@@ -221,6 +221,8 @@ static void close_solenoid() {
     gpio_set_level(GPIO_BSTC, 0);
     gpio_set_level(GPIO_SD_IN2, 0);
     gpio_set_level(GPIO_S_OPEN, 0);
+
+    storage_remove(STORAGE_MANUAL_ON);
 }
 
 void app_main(void) {
@@ -250,7 +252,6 @@ void app_main(void) {
             // Check if manual mode is already on
             if (get_err == ESP_OK && manual_on == 1) {
                 ESP_LOGI(TAG, "MAN button triggered - turning off manual mode");
-                storage_remove(STORAGE_MANUAL_ON);
                 close_solenoid();
             } else {
                 ESP_LOGI(TAG, "MAN button triggered - turning on manual mode");
@@ -310,9 +311,13 @@ void app_main(void) {
     } else {
         // Did not wake from deep sleep [physical start of system]
         ESP_LOGI(TAG, "Starting system from physical start");
-        storage_set_u8(STORAGE_VERSION, 10);
+        storage_set_u8(STORAGE_VERSION, 11);
 
         setup_gpio_pins();
+        hold_dis_gpio_pins();
+
+        close_solenoid();
+
         hold_en_gpio_pins();
         get_irrigation_settings();
     }
