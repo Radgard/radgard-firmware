@@ -160,6 +160,7 @@ static uint64_t determine_sleep_time() {
 
                 // Wake up at 01:30 for irrigation fetch
                 if (start_up_time == 0 || sig_rains[day]) {
+                    storage_remove(STORAGE_SOLENOID_OPEN);
                     start_up_time = get_irrigation_fetch_time(time_zone);
 
                     if (sig_rains[day]) {
@@ -183,6 +184,7 @@ static uint64_t determine_sleep_time() {
             time(&now);
             localtime_r(&now, &timeinfo);
 
+            storage_remove(STORAGE_SOLENOID_OPEN);
             uint32_t start_up_time = get_irrigation_fetch_time(time_zone);
 
             sleep_time_secs = start_up_time - now;
@@ -274,7 +276,7 @@ void app_main(void) {
             esp_err_t get_err = storage_get_u32(STORAGE_TIME_ZONE, &time_zone);
 
             if (get_err == ESP_OK) {
-                if (timeinfo.tm_hour == time_zone || (timeinfo.tm_hour == time_zone + 1 && timeinfo.tm_min < 60) || (timeinfo.tm_hour == time_zone + 2 && timeinfo.tm_min <= 30)) {
+                if (timeinfo.tm_hour == time_zone || timeinfo.tm_hour == time_zone + 1 || (timeinfo.tm_hour == time_zone + 2 && timeinfo.tm_min <= 30)) {
                     // Within daily update period [00:00 - 2:30]
                     ESP_LOGI(TAG, "Starting system from deep sleep - fetching latest irrigation settings");
                     get_irrigation_settings();
