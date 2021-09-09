@@ -156,7 +156,7 @@ esp_err_t storage_get_u32(const char *key, uint32_t *value) {
     return get_err;
 }
 
-esp_err_t storage_get_blob(const char *key, const void *value, size_t *size) {
+esp_err_t storage_get_blob(const char *key, void *value, size_t *size) {
     nvs_handle handle = get_read_handle();
 
     esp_err_t get_err = nvs_get_blob(handle, key, value, size);
