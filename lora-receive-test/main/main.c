@@ -18,6 +18,23 @@
 
 uint8_t buf[32];
 
+
+void respond_with_success(void* p) {
+   for(;;) {
+      vTaskDelay(pdMS_TO_TICKS(5000));
+      lora_send_packet((uint8_t*)"Hello", 5);
+      ESP_LOGI("main", "Handshake confirmed...");
+   }
+}
+
+void respond_with_error(void* p) {
+   for(;;) {
+      vTaskDelay(pdMS_TO_TICKS(5000));
+      lora_send_packet((uint8_t*)"Hello", 5);
+      ESP_LOGI("main", "Handshake unconfirmed");
+   }
+}
+
 void task_rx(void *p)
 {
    int x;
@@ -25,9 +42,16 @@ void task_rx(void *p)
       lora_receive();    // put into receive mode
       while(lora_received()) {
          x = lora_receive_packet(buf, sizeof(buf));
+
+         // x error checking
+         // if () {}
+         // else {}
+
          buf[x] = 0;
          ESP_LOGI("main", "Received packet: %s", buf);
          lora_receive();
+
+         respond_with_success();
       }
       vTaskDelay(1);
    }
