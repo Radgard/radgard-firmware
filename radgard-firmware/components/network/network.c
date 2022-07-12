@@ -23,12 +23,14 @@
 
 static const char *TAG = "network";
 
-static const char *SSID = "Radgard";
+static const char *SSID = "Radgard Frisk";
 static const char *PASSWORD = "plantsaregreat";
 static const char *ENDPOINT = "setup";
 
 /* Signal Wi-Fi events on this event-group */
 const int WIFI_CONNECTED_EVENT = BIT0;
+const int WIFI_DISCONNECTED_EVENT = BIT1;
+const int WIFI_STATUS_EVENT = BIT0 | BIT1;
 static EventGroupHandle_t wifi_event_group;
 
 const int firmware_sync_completed = BIT0;
@@ -79,13 +81,13 @@ static void event_handler(void* arg, esp_event_base_t event_base, int event_id, 
         /* Signal main application to continue execution */
         xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_EVENT);
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        if (disconnect_count < 10) {
+        if (disconnect_count < 3) {
             ESP_LOGI(TAG, "Disconnected. Connecting to the AP again...");
             esp_wifi_connect();
             disconnect_count += 1;
         } else {
             ESP_LOGI(TAG, "Disconnected. Skipping network init...");
-            xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_EVENT);
+            xEventGroupSetBits(wifi_event_group, WIFI_DISCONNECTED_EVENT);
         }
     }
 }
@@ -215,7 +217,7 @@ static void network_firmware_sync() {
     vTaskDelete(NULL);
 }
 
-void network_start_provision_connect_wifi() {
+bool network_start_provision_connect_wifi() {
     /* Initialize TCP/IP */
     ESP_ERROR_CHECK(esp_netif_init());
 
@@ -313,9 +315,13 @@ void network_start_provision_connect_wifi() {
     }
 
     /* Wait for Wi-Fi connection */
-    xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_EVENT, false, true, portMAX_DELAY);
+    xEventGroupWaitBits(wifi_event_group, WIFI_STATUS_EVENT, false, false, portMAX_DELAY);
 
     ESP_ERROR_CHECK(esp_event_loop_delete_default());
+
+    if (xEventGroupGetBits(wifi_event_group) == WIFI_DISCONNECTED_EVENT) {
+        return false;
+    }
 
     ESP_LOGI(TAG, "Just connected to WIFI - starting sleep to allow proper configuration");
     vTaskDelay(1000 / portTICK_RATE_MS);
@@ -326,6 +332,8 @@ void network_start_provision_connect_wifi() {
     firmware_sync_event_group = xEventGroupCreate();
     xTaskCreate(&network_firmware_sync, "network_firmware_sync", 8192, NULL, 5, NULL);
     xEventGroupWaitBits(firmware_sync_event_group, firmware_sync_completed, false, true, portMAX_DELAY);
+
+    return true;
 }
 
 void network_disconnect_wifi() {
