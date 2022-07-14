@@ -202,13 +202,13 @@ static uint64_t determine_sleep_time() {
 static void open_solenoid() {
     gpio_set_level(GPIO_BSTC, 1);
 
-    vTaskDelay(1000 / portTICK_RATE_MS);
-
-    gpio_set_level(GPIO_SD_IN1, 1);
-
-    vTaskDelay(100 / portTICK_RATE_MS);
+    vTaskDelay(55 / portTICK_RATE_MS);
 
     gpio_set_level(GPIO_BSTC, 0);
+    gpio_set_level(GPIO_SD_IN1, 1);
+    
+    vTaskDelay(55 / portTICK_RATE_MS);
+
     gpio_set_level(GPIO_SD_IN1, 0);
     gpio_set_level(GPIO_S_OPEN, 1);
 }
@@ -216,13 +216,13 @@ static void open_solenoid() {
 static void close_solenoid() {
     gpio_set_level(GPIO_BSTC, 1);
 
-    vTaskDelay(1000 / portTICK_RATE_MS);
-
-    gpio_set_level(GPIO_SD_IN2, 1);
-
-    vTaskDelay(100 / portTICK_RATE_MS);
+    vTaskDelay(55 / portTICK_RATE_MS);
 
     gpio_set_level(GPIO_BSTC, 0);
+    gpio_set_level(GPIO_SD_IN2, 1);
+
+    vTaskDelay(55 / portTICK_RATE_MS);
+
     gpio_set_level(GPIO_SD_IN2, 0);
     gpio_set_level(GPIO_S_OPEN, 0);
 
